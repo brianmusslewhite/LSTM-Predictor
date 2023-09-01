@@ -9,7 +9,7 @@ from tqdm import tqdm
 from lstm_model import train_model
 
 
-def optimize_parameters(X_train, y_train, params):   
+def optimize_parameters(X_train, y_train, params):
     parameter_combinations = list(itertools.product(params.lstm_units_options, params.dropout_rate_options, params.batch_size_options, params.optimizer_options))
 
     optimization_results = []
