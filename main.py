@@ -27,7 +27,7 @@ if __name__ == '__main__':
         sequence_length=90,
         epochs=50,
         days_to_predict=30,
-        perform_optimization=False,
+        perform_optimization=True,
         use_early_stopping=True,
         train_size_ratio=0.8,
         lstm_units_options=[70, 50, 100, 150, 200],  # [30, 50, 70, 100, 150, 200],
@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     # Predict future prices using the model trained on the full data set
     last_known_sequence = X_full[-1]
-    future_prices = predict_future_prices(full_model, last_known_sequence, scaler, params, params.days_to_predict)
+    future_prices = predict_future_prices(full_model, last_known_sequence, scaler, params)
 
     # Plot the results
     if params.perform_optimization:
