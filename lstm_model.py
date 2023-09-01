@@ -5,9 +5,9 @@ from tensorflow.keras.layers import LSTM, Dropout, Dense
 from tensorflow.keras.callbacks import EarlyStopping
 
 
-def train_model(X_train, y_train, X_test, y_test, lstm_units=150, dropout_rate=0.1, batch_size=16, epochs=50, use_early_stopping=True, optimizer_name='nadam'):
+def train_model(x_train, y_train, x_test=None, y_test=None, lstm_units=150, dropout_rate=0.1, batch_size=16, epochs=50, use_early_stopping=True, optimizer_name='nadam'):
     model = Sequential([
-        LSTM(units=lstm_units, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])),
+        LSTM(units=lstm_units, return_sequences=True, input_shape=(x_train.shape[1], x_train.shape[2])),
         Dropout(dropout_rate),
         LSTM(units=lstm_units),
         Dropout(dropout_rate),
@@ -16,22 +16,26 @@ def train_model(X_train, y_train, X_test, y_test, lstm_units=150, dropout_rate=0
 
     model.compile(optimizer=optimizer_name, loss='mean_squared_error')
 
-    early_stopping = EarlyStopping(
-        monitor='val_loss',
-        patience=10,
-        restore_best_weights=True
-    ) if use_early_stopping else None
+    if use_early_stopping and x_test is not None and y_test is not None:
+        early_stopping = EarlyStopping(
+            monitor='val_loss',
+            patience=10,
+            restore_best_weights=True
+        )
+        callbacks_list = [early_stopping]
+    else:
+        callbacks_list = []
 
-    callbacks_list = [early_stopping] if use_early_stopping else []
+    validation_data = (x_test, y_test) if x_test is not None and y_test is not None else None
 
-    model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(X_test, y_test), callbacks=callbacks_list, verbose=0)
+    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=validation_data, callbacks=callbacks_list, verbose=0)
 
     return model
 
 
 def predict_future_prices(model, last_known_sequence, scaler, params):
     future_data = {}
-    current_sequence = last_known_sequence.copy()  # Start with the last known sequence
+    current_sequence = last_known_sequence.copy()
 
     for i in range(params.days_to_predict):
         # Predict the next value based on the current sequence

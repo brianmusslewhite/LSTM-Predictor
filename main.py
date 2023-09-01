@@ -40,9 +40,7 @@ if __name__ == '__main__':
     raw_df = load_and_preprocess_data(params.file_path, params.feature_cols)
     normalized_data, scaler, train_size = normalize_data(raw_df, params.feature_cols, params.train_size_ratio)
     x_train, y_train, x_test, y_test = prepare_training_data(normalized_data, params.sequence_length, train_size)
-
-    # Train the model on the full dataset for predictions
-    X_full, y_full, _, _ = prepare_training_data(normalized_data, params.sequence_length, len(normalized_data) - params.sequence_length - 1)
+    x_full, y_full, _, _ = prepare_training_data(normalized_data, params.sequence_length, len(normalized_data) - params.sequence_length - 1)
 
     # Extract corresponding dates for training and test sets for plotting
     train_dates = raw_df['Date'][params.sequence_length + 1:params.sequence_length + 1 + len(y_train)]
@@ -53,17 +51,17 @@ if __name__ == '__main__':
         best_mse, best_params = optimize_parameters(x_train, y_train, params)
         print(f"Best MSE: {best_mse}, Best Parameters: {best_params}")
         model_train = train_model(x_train, y_train, x_test, y_test, lstm_units=best_params[0], dropout_rate=best_params[1], batch_size=best_params[2], epochs=params.epochs, use_early_stopping=params.use_early_stopping, optimizer_name=best_params[3])
+        model_full = train_model(x_full, y_full, None, None, lstm_units=best_params[0], dropout_rate=best_params[1], batch_size=best_params[2], epochs=params.epochs, use_early_stopping=params.use_early_stopping, optimizer_name=best_params[3])
     else:
         model_train = train_model(x_train, y_train, x_test, y_test)
-
-    full_model = train_model(X_full, y_full, None, None, lstm_units=best_params[0], dropout_rate=best_params[1], batch_size=best_params[2], epochs=params.epochs, use_early_stopping=params.use_early_stopping, optimizer_name=best_params[3]) if params.perform_optimization else train_model(X_full, y_full, x_test, y_test)
+        model_full = train_model(x_full, y_full, None, None)
 
     # Predict stock prices of the test data
     y_pred_test = model_train.predict(x_test)
 
     # Predict future prices using the model trained on the full data set
-    last_known_sequence = X_full[-1]
-    future_prices = predict_future_prices(full_model, last_known_sequence, scaler, params)
+    last_known_sequence = x_full[-1]
+    future_prices = predict_future_prices(model_full, last_known_sequence, scaler, params)
 
     # Plot the results
     if params.perform_optimization:
