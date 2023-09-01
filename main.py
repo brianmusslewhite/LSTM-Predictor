@@ -22,19 +22,19 @@ class Parameters:
 
 if __name__ == '__main__':
     params = Parameters(
-            file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
-            feature_cols=['Close/Last', 'Volume'],
-            sequence_length=90,
-            epochs=50,
-            days_to_predict=30,
-            perform_optimization=True,
-            use_early_stopping=True,
-            train_size_ratio=0.8,
-            lstm_units_options=[70, 50, 100, 150, 200],  # [30, 50, 70, 100, 150, 200],
-            dropout_rate_options=[0.05, 0.1, 0.2, 0.3, 0.4, 0.5],  # [0.1, 0.2, 0.3, 0.4, 0.5]
-            batch_size_options=[8, 16, 32, 64],  # [8, 16, 32, 64, 128, 256]
-            optimizer_options=['sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']  # ['adam', 'sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']
-        )
+        file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
+        feature_cols=['Close/Last', 'Volume'],
+        sequence_length=90,
+        epochs=50,
+        days_to_predict=30,
+        perform_optimization=False,
+        use_early_stopping=True,
+        train_size_ratio=0.8,
+        lstm_units_options=[70, 50, 100, 150, 200],  # [30, 50, 70, 100, 150, 200],
+        dropout_rate_options=[0.05, 0.1, 0.2, 0.3, 0.4, 0.5],  # [0.1, 0.2, 0.3, 0.4, 0.5]
+        batch_size_options=[8, 16, 32, 64],  # [8, 16, 32, 64, 128, 256]
+        optimizer_options=['sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']  # ['adam', 'sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']
+    )
 
     # Load, preprocess, and prep data
     raw_df = load_and_preprocess_data(params.file_path, params.feature_cols)
