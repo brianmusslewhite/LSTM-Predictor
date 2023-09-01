@@ -1,6 +1,5 @@
-
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def plot_results(train_dates, y_train, test_dates, y_test, y_pred, future_data, scaler, params, best_params=None):
     n_features = len(params.feature_cols)

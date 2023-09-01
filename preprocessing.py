@@ -1,7 +1,7 @@
-import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+import pandas as pd
 
+from sklearn.preprocessing import MinMaxScaler
 
 def load_and_preprocess_data(file_path, feature_cols):
     df = pd.read_csv(file_path)

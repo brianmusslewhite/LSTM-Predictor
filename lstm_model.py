@@ -1,7 +1,8 @@
+import numpy as np
+
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dropout, Dense
 from tensorflow.keras.callbacks import EarlyStopping
-import numpy as np
 
 def train_model(X_train, y_train, X_test, y_test, lstm_units=100, dropout_rate=0.1, batch_size=8, epochs=30, use_early_stopping=True, optimizer_name='adam'):
     model = Sequential([
