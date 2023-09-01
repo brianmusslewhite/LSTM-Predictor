@@ -1,0 +1,4 @@
+HistoricalData*.csv
+/pictures
+/optimization_results
+/__pycache__
