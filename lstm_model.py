@@ -26,11 +26,11 @@ def train_model(X_train, y_train, X_test, y_test, lstm_units=100, dropout_rate=0
     
     return model
 
-def predict_future_prices(model, last_known_sequence, scaler, params, future_days=10):
+def predict_future_prices(model, last_known_sequence, scaler, params):
     future_data = {}
     current_sequence = last_known_sequence.copy()  # Start with the last known sequence
 
-    for i in range(future_days):
+    for i in range(params.days_to_predict):
         # Predict the next value based on the current sequence
         predicted = model.predict(current_sequence[np.newaxis, :, :])[0]
         

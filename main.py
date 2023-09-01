@@ -4,12 +4,12 @@ from lstm_model import train_model, predict_future_prices
 from plotting import plot_results
 
 class Parameters:
-    def __init__(self, file_path, feature_cols, sequence_length, epochs, future_days, perform_optimization, use_early_stopping, train_size_ratio, lstm_units_options, dropout_rate_options, batch_size_options, optimizer_options):
+    def __init__(self, file_path, feature_cols, sequence_length, epochs, days_to_predict, perform_optimization, use_early_stopping, train_size_ratio, lstm_units_options, dropout_rate_options, batch_size_options, optimizer_options):
         self.file_path = file_path
         self.feature_cols = feature_cols
         self.sequence_length = sequence_length
         self.epochs = epochs
-        self.future_days = future_days
+        self.days_to_predict = days_to_predict
         self.perform_optimization = perform_optimization
         self.use_early_stopping = use_early_stopping
         self.train_size_ratio = train_size_ratio
@@ -24,14 +24,14 @@ if __name__ == '__main__':
             feature_cols=['Close/Last', 'Volume'],
             sequence_length=90,
             epochs=50,
-            future_days=30,
+            days_to_predict=30,
             perform_optimization=True,
             use_early_stopping=True,
             train_size_ratio=0.8,
-            lstm_units_options=[100, 150], #[30, 50, 70, 100, 150, 200],
-            dropout_rate_options=[0.1, 0.2], #[0.1, 0.2, 0.3, 0.4, 0.5]
-            batch_size_options=[8, 16], #[8, 16, 32, 64, 128, 256]
-            optimizer_options=['adam', 'sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']
+            lstm_units_options=[70, 50, 100, 150, 200], #[30, 50, 70, 100, 150, 200],
+            dropout_rate_options=[0.05, 0.1, 0.2, 0.3, 0.4, 0.5], #[0.1, 0.2, 0.3, 0.4, 0.5]
+            batch_size_options=[8, 16, 32, 64], #[8, 16, 32, 64, 128, 256]
+            optimizer_options=['sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl'] #['adam', 'sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']
         )
 
     # Load, preprocess, and prep data
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     # Predict future prices using the model trained on the full data set
     last_known_sequence = X_full[-1]
-    future_prices = predict_future_prices(full_model, last_known_sequence, scaler, params, future_days=params.future_days)
+    future_prices = predict_future_prices(full_model, last_known_sequence, scaler, params, params.days_to_predict)
     
     # Plot the results
     if params.perform_optimization:
