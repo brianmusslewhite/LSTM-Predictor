@@ -5,9 +5,10 @@ from plotting import plot_results
 
 
 class Parameters:
-    def __init__(self, file_path, feature_cols, sequence_length, epochs, days_to_predict, perform_optimization, use_early_stopping, train_size_ratio, lstm_units_options, dropout_rate_options, batch_size_options, optimizer_options):
+    def __init__(self, file_path, feature_cols, scaling_method, sequence_length, epochs, days_to_predict, perform_optimization, use_early_stopping, train_size_ratio, lstm_units_options, dropout_rate_options, batch_size_options, optimizer_options):
         self.file_path = file_path
         self.feature_cols = feature_cols
+        self.scaling_method = scaling_method
         self.sequence_length = sequence_length
         self.epochs = epochs
         self.days_to_predict = days_to_predict
@@ -23,22 +24,23 @@ class Parameters:
 if __name__ == '__main__':
     params = Parameters(
         file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
-        feature_cols=['Close/Last', 'Volume'],
+        feature_cols=['Close/Last'],
+        scaling_method='log',
         sequence_length=90,
-        epochs=50,
+        epochs=100,
         days_to_predict=30,
-        perform_optimization=False,
+        perform_optimization=True,
         use_early_stopping=True,
         train_size_ratio=0.8,
         lstm_units_options=[100, 150],  # [30, 50, 70, 100, 150, 200],
         dropout_rate_options=[0.1, 0.2, 0.3],  # [0.1, 0.2, 0.3, 0.4, 0.5]
         batch_size_options=[8, 16, 32],  # [8, 16, 32, 64, 128, 256]
-        optimizer_options=['adam', 'nadam', 'adamax', 'rmsprop']  # ['adam', 'sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']
+        optimizer_options=['adam']  # ['adam', 'sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']
     )
 
     # Load, preprocess, and prep data
     raw_df = load_and_preprocess_data(params.file_path, params.feature_cols)
-    normalized_data, scaler, train_size = normalize_data(raw_df, params.feature_cols, params.train_size_ratio)
+    normalized_data, scaler, train_size = normalize_data(raw_df, params.feature_cols, params.train_size_ratio, params.scaling_method)
     x_train, y_train, x_test, y_test = prepare_training_data(normalized_data, params.sequence_length, params.days_to_predict, train_size)
 
     # Extract corresponding dates for training and test sets for plotting

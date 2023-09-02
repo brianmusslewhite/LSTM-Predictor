@@ -6,13 +6,6 @@ import pandas as pd
 
 
 def plot_results(train_dates, y_train, test_dates, y_test, y_pred, future_data, scaler, params, best_params=None):
-    print(f"Shape of y_train: {y_train.shape}")
-    print(f"Shape of y_test: {y_test.shape}")
-    print(f"Shape of y_pred: {y_pred.shape}")
-
-    # Temporarily print the shape of the inverse transform of one sample
-    print(f"Shape of inverse_transform(y_train[0]): {scaler.inverse_transform(y_train[0]).shape}")
-
     n_features = len(params.feature_cols)
 
     fig, axes = plt.subplots(n_features, 1, figsize=(15, 6 * n_features))

@@ -5,7 +5,7 @@ from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambd
 from tensorflow.keras.callbacks import EarlyStopping
 
 
-def train_model(x_train, y_train, x_test, y_test, params, lstm_units=150, dropout_rate=0.1, batch_size=16, epochs=50, use_early_stopping=True, optimizer_name='nadam'):
+def train_model(x_train, y_train, x_test, y_test, params, lstm_units=150, dropout_rate=0.1, batch_size=16, epochs=100, use_early_stopping=True, optimizer_name='adam'):
     model = Sequential([
         LSTM(units=lstm_units, return_sequences=True, input_shape=(x_train.shape[1], x_train.shape[2])),
         Dropout(dropout_rate),
