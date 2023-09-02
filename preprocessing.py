@@ -35,16 +35,16 @@ def normalize_data(df, feature_cols, train_size_ratio):
 
 
 def prepare_training_data(normalized_data, sequence_length, train_size):
-    X, y = [], []
+    x, y = [], []
 
     for i in range(len(normalized_data) - sequence_length - 1):
-        X.append(normalized_data[i:i + sequence_length])
+        x.append(normalized_data[i:i + sequence_length])
         y.append(normalized_data[i + sequence_length])
 
-    X = np.array(X)
+    x = np.array(x)
     y = np.array(y)
 
-    X_train, X_test = X[:train_size], X[train_size:]
+    x_train, x_test = x[:train_size], x[train_size:]
     y_train, y_test = y[:train_size], y[train_size:]
 
-    return X_train, y_train, X_test, y_test
+    return x_train, y_train, x_test, y_test

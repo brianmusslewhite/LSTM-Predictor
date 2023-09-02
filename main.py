@@ -27,7 +27,7 @@ if __name__ == '__main__':
         sequence_length=90,
         epochs=50,
         days_to_predict=30,
-        perform_optimization=False,
+        perform_optimization=True,
         use_early_stopping=True,
         train_size_ratio=0.8,
         lstm_units_options=[100, 150],  # [30, 50, 70, 100, 150, 200],
