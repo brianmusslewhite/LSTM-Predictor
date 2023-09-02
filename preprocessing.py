@@ -34,12 +34,12 @@ def normalize_data(df, feature_cols, train_size_ratio):
     return normalized_data, scaler, train_size
 
 
-def prepare_training_data(normalized_data, sequence_length, train_size):
+def prepare_training_data(normalized_data, sequence_length, prediction_length, train_size):
     x, y = [], []
 
-    for i in range(len(normalized_data) - sequence_length - 1):
+    for i in range(len(normalized_data) - sequence_length - prediction_length):
         x.append(normalized_data[i:i + sequence_length])
-        y.append(normalized_data[i + sequence_length])
+        y.append(normalized_data[i + sequence_length:i + sequence_length + prediction_length])
 
     x = np.array(x)
     y = np.array(y)
