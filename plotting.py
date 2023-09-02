@@ -16,15 +16,19 @@ def plot_results(train_dates, y_train, test_dates, y_test, y_pred, future_data, 
     for feature_idx, feature_name in enumerate(params.feature_cols):
         ax = axes[feature_idx]
 
-        y_train_actual = np.concatenate([scaler.inverse_transform(y_train[i])[-1, :].reshape(1, -1) for i in range(y_train.shape[0])], axis=0)[:, feature_idx]
-        y_test_actual = np.concatenate([scaler.inverse_transform(y_test[i])[-1, :].reshape(1, -1) for i in range(y_test.shape[0])], axis=0)[:, feature_idx]
-        y_pred_actual = np.concatenate([scaler.inverse_transform(y_pred[i])[-1, :].reshape(1, -1) for i in range(y_pred.shape[0])], axis=0)[:, feature_idx]
+        if scaler:
+            y_train_actual = np.concatenate([scaler.inverse_transform(y_train[i])[-1, :].reshape(1, -1) for i in range(y_train.shape[0])], axis=0)[:, feature_idx]
+            y_test_actual = np.concatenate([scaler.inverse_transform(y_test[i])[-1, :].reshape(1, -1) for i in range(y_test.shape[0])], axis=0)[:, feature_idx]
+            y_pred_actual = np.concatenate([scaler.inverse_transform(y_pred[i])[-1, :].reshape(1, -1) for i in range(y_pred.shape[0])], axis=0)[:, feature_idx]
+        else:
+            y_train_actual = y_train[:, -1, feature_idx]
+            y_test_actual = y_test[:, -1, feature_idx]
+            y_pred_actual = y_pred[:, -1, feature_idx]
 
         ax.plot(pd.to_datetime(train_dates), y_train_actual, label=f'Actual Train {feature_name}', color='purple')
         ax.plot(pd.to_datetime(test_dates), y_test_actual, label=f'Actual Test {feature_name}', color='blue')
         ax.plot(pd.to_datetime(test_dates), y_pred_actual, label=f'Predicted Test {feature_name}', color='red')
 
-        # Plotting future data (if available)
         if future_data.get(feature_name) is not None:
             future_indices = pd.date_range(pd.to_datetime(test_dates).iloc[-1], periods=len(future_data[feature_name]) + 1)[1:]
             ax.plot(future_indices, future_data[feature_name], label=f'Predicted Future {feature_name}', color='green', linestyle='--')

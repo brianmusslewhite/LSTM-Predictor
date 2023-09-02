@@ -10,7 +10,7 @@ from tqdm import tqdm
 from lstm_model import train_model
 
 
-def optimize_parameters(x_train, y_train, params):
+def optimize_parameters(x_train, y_train, x_test, y_test, params, use_tscv=True):
     parameter_combinations = list(itertools.product(params.lstm_units_options, params.dropout_rate_options, params.batch_size_options, params.optimizer_options))
     optimization_results = []
 
@@ -22,11 +22,29 @@ def optimize_parameters(x_train, y_train, params):
 
     def train_and_evaluate(potential_params):
         units, dropout, batch, optimizer_name = potential_params
-        mse_cv = time_series_cross_val(x_train, y_train, params, units, dropout, batch, params.epochs, params.use_early_stopping, optimizer_name)
-        optimization_results.append({'mse': mse_cv, 'params': potential_params})
+
+        if use_tscv:
+            mse = time_series_cross_val(x_train, y_train, params, units, dropout, batch, params.epochs, params.use_early_stopping, optimizer_name)
+        else:
+            model = train_model(x_train, y_train, x_test, y_test, params, units, dropout, batch, params.epochs, params.use_early_stopping, optimizer_name)
+            y_pred = model.predict(x_train)
+
+            timesteps = y_train.shape[1]
+            features = y_train.shape[2]
+
+            mse_per_timestep = []
+
+            for t in range(timesteps):
+                for f in range(features):
+                    mse = mean_squared_error(y_train[:, t, f], y_pred[:, t, f])
+                    mse_per_timestep.append(mse)
+
+            mse = np.mean(mse_per_timestep)
+
+        optimization_results.append({'mse': mse, 'params': potential_params})
 
         with open(file_name, 'a') as f:
-            f.write(f"MSE: {mse_cv}, Parameters: LSTM Units - {units}, Dropout Rate - {dropout}, Batch Size - {batch}, Optimizer - {optimizer_name}\n")
+            f.write(f"MSE: {mse}, Parameters: LSTM Units - {units}, Dropout Rate - {dropout}, Batch Size - {batch}, Optimizer - {optimizer_name}\n")
 
     for potential_params in tqdm(parameter_combinations, total=len(parameter_combinations)):
         train_and_evaluate(potential_params)

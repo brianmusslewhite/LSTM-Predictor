@@ -11,7 +11,7 @@ def train_model(x_train, y_train, x_test, y_test, params, lstm_units=150, dropou
         Dropout(dropout_rate),
         LSTM(units=lstm_units, return_sequences=True),
         Dropout(dropout_rate),
-        TimeDistributed(Dense(units=2, activation='relu')),
+        TimeDistributed(Dense(units=2)),
         Lambda(lambda x: x[:, -params.days_to_predict:, :])
     ])
 
@@ -44,7 +44,11 @@ def predict_future_prices(model, last_known_sequence, scaler, params):
     for i in range(0, params.days_to_predict, steps_to_predict):
         predicted = model.predict(current_sequence[np.newaxis, :, :])[0]
         predicted = predicted.reshape(-1, len(params.feature_cols))
-        predicted_transformed = scaler.inverse_transform(predicted)
+
+        if scaler:
+            predicted_transformed = scaler.inverse_transform(predicted)
+        else:
+            predicted_transformed = predicted
 
         for j, feature_name in enumerate(params.feature_cols):
             future_data[feature_name].extend(predicted_transformed[:, j])

@@ -5,7 +5,7 @@ from plotting import plot_results
 
 
 class Parameters:
-    def __init__(self, file_path, feature_cols, scaling_method, sequence_length, epochs, days_to_predict, perform_optimization, use_early_stopping, train_size_ratio, lstm_units_options, dropout_rate_options, batch_size_options, optimizer_options):
+    def __init__(self, file_path, feature_cols, scaling_method, sequence_length, epochs, days_to_predict, perform_optimization, use_early_stopping, train_size_ratio, sequence_length_options, lstm_units_options, dropout_rate_options, batch_size_options, optimizer_options):
         self.file_path = file_path
         self.feature_cols = feature_cols
         self.scaling_method = scaling_method
@@ -15,6 +15,7 @@ class Parameters:
         self.perform_optimization = perform_optimization
         self.use_early_stopping = use_early_stopping
         self.train_size_ratio = train_size_ratio
+        self.sequence_length_options = sequence_length_options
         self.lstm_units_options = lstm_units_options
         self.dropout_rate_options = dropout_rate_options
         self.batch_size_options = batch_size_options
@@ -23,18 +24,19 @@ class Parameters:
 
 if __name__ == '__main__':
     params = Parameters(
-        file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
-        feature_cols=['Close/Last'],
-        scaling_method='log',
+        file_path='HistoricalData_1692981828643_GME_NASDAQ_short.csv',
+        feature_cols=['Close/Last', 'Volume'],
+        scaling_method='minmax',
         sequence_length=90,
         epochs=100,
         days_to_predict=30,
-        perform_optimization=True,
+        perform_optimization=False,
         use_early_stopping=True,
         train_size_ratio=0.8,
-        lstm_units_options=[100, 150],  # [30, 50, 70, 100, 150, 200],
+        sequence_length_options=[60, 90],
+        lstm_units_options=[30, 50, 70, 100, 150],  # [30, 50, 70, 100, 150, 200],
         dropout_rate_options=[0.1, 0.2, 0.3],  # [0.1, 0.2, 0.3, 0.4, 0.5]
-        batch_size_options=[8, 16, 32],  # [8, 16, 32, 64, 128, 256]
+        batch_size_options=[8, 16, 32, 64],  # [8, 16, 32, 64, 128, 256]
         optimizer_options=['adam']  # ['adam', 'sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']
     )
 
@@ -49,7 +51,7 @@ if __name__ == '__main__':
 
     # Perform hyperparameter optimization if specified
     if params.perform_optimization:
-        best_mse, best_params = optimize_parameters(x_train, y_train, params)
+        best_mse, best_params = optimize_parameters(x_train, y_train, x_test, y_test, params, False)
         print(f"Best MSE: {best_mse}, Best Parameters: {best_params}")
         model = train_model(x_train, y_train, x_test, y_test, params, lstm_units=best_params[0], dropout_rate=best_params[1], batch_size=best_params[2], epochs=params.epochs, use_early_stopping=params.use_early_stopping, optimizer_name=best_params[3])
     else:

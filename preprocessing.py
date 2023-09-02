@@ -34,8 +34,12 @@ def normalize_data(df, feature_cols, train_size_ratio, scaling_method='minmax'):
         normalized_train_data = log_scaler.transform(train_data)
         normalized_test_data = log_scaler.transform(test_data)
         scaler = log_scaler
+    elif scaling_method is None:
+        normalized_train_data = train_data
+        normalized_test_data = test_data
+        scaler = None  # No scaler is used
     else:
-        raise ValueError("Invalid scaling method. Choose either 'minmax' or 'log'.")
+        raise ValueError("Invalid scaling method. Choose either 'minmax', 'log', or None.")
 
     normalized_data = np.concatenate((normalized_train_data, normalized_test_data), axis=0)
 
