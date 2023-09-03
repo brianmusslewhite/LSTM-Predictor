@@ -1,4 +1,5 @@
 from datetime import datetime
+import copy
 import itertools
 import numpy as np
 import os
@@ -11,7 +12,9 @@ from lstm_model import train_model
 
 
 def optimize_parameters(df, user_options, optimization_options):
-    parameter_combinations = list(itertools.product(params.lstm_units_options, params.dropout_rate_options, params.batch_size_options, params.optimizer_options))
+    parameter_combinations = list(itertools.product(optimization_options.scaling_method_options, optimization_options.sequence_length_options, optimization_options.epochs_options,
+                                                    optimization_options.train_size_ratio_options, optimization_options.lstm_units_options, optimization_options.dropout_rate_options, 
+                                                    optimization_options.batch_size_options, optimization_options.optimizer_options))
     optimization_results = []
 
     if not os.path.exists('optimization_results'):
@@ -21,30 +24,38 @@ def optimize_parameters(df, user_options, optimization_options):
     file_name = f'optimization_results/optimization_results_{now}.txt'
 
     def train_and_evaluate(potential_params):
-        units, dropout, batch, optimizer_name = potential_params
+        scaling_method, sequence_length, epochs, train_size_ratio, lstm_units, dropout_rate, batch_size, optimizer = potential_params
 
-        if use_tscv:
-            mse = time_series_cross_val(x_train, y_train, params, units, dropout, batch, params.epochs, params.use_early_stopping, optimizer_name)
-        else:
-            model = train_model(x_train, y_train, x_test, y_test, params, units, dropout, batch, params.epochs, params.use_early_stopping, optimizer_name)
-            y_pred = model.predict(x_train)
+        temp_user_options = copy.deepcopy(user_options)
+        temp_user_options.d_scaling_method = scaling_method
+        temp_user_options.d_sequence_length = sequence_length
+        temp_user_options.d_epochs = epochs
+        temp_user_options.d_train_size_ratio = train_size_ratio
+        temp_user_options.d_lstm_units = lstm_units
+        temp_user_options.d_dropout_rate = dropout_rate
+        temp_user_options.d_batch_size = batch_size
+        temp_user_options.d_optimizer = optimizer
 
-            timesteps = y_train.shape[1]
-            features = y_train.shape[2]
+        model, model_data = train_model(df, temp_user_options)
 
-            mse_per_timestep = []
+        y_pred = model.predict(model_data.x_test)
 
-            for t in range(timesteps):
-                for f in range(features):
-                    mse = mean_squared_error(y_train[:, t, f], y_pred[:, t, f])
-                    mse_per_timestep.append(mse)
+        timesteps = model_data.y_train.shape[1]
+        features = model_data.y_train.shape[2]
 
-            mse = np.mean(mse_per_timestep)
+        mse_per_timestep = []
+
+        for t in range(timesteps):
+            for f in range(features):
+                mse = mean_squared_error(model_data.y_test[:, t, f], y_pred[:, t, f])
+                mse_per_timestep.append(mse)
+
+        mse = np.mean(mse_per_timestep)
 
         optimization_results.append({'mse': mse, 'params': potential_params})
 
         with open(file_name, 'a') as f:
-            f.write(f"MSE: {mse}, Parameters: LSTM Units - {units}, Dropout Rate - {dropout}, Batch Size - {batch}, Optimizer - {optimizer_name}\n")
+            f.write(f"MSE: {mse}, Parameters: Scaling Method - {scaling_method} Sequence Length - {sequence_length} Epochs - {epochs} Train Size Ratio - {train_size_ratio} LSTM Units - {lstm_units}, Dropout Rate - {dropout_rate}, Batch Size - {batch_size}, Optimizer - {optimizer}\n")
 
     for potential_params in tqdm(parameter_combinations, total=len(parameter_combinations)):
         train_and_evaluate(potential_params)

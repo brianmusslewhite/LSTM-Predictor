@@ -7,27 +7,15 @@ from tensorflow.keras.callbacks import EarlyStopping
 from preprocessing import process_for_model
 
 
-def train_model(df, user_options, best_params=None):
+def train_model(df, user_options):
     # Split, normalize, and prepare data for a multi-step model
-    model_data = process_for_model(df, user_options, best_params)
+    model_data = process_for_model(df, user_options)
 
-    print(f"Shape of model_data.x_train after process_for_model: {model_data.x_train.shape}")
-    print(f"Shape of model_data.y_train after process_for_model: {model_data.y_train.shape}")
-    print(f"Shape of model_data.x_test after process_for_model: {model_data.x_test.shape}")
-    print(f"Shape of model_data.y_test after process_for_model: {model_data.y_test.shape}")
-
-    if best_params is None:
-        lstm_units = user_options.d_lstm_units
-        dropout_rate = user_options.d_dropout_rate
-        optimizer_name = user_options.d_optimizer
-        epochs = user_options.d_epochs
-        batch_size = user_options.d_batch_size
-    else:
-        lstm_units = best_params.lstm_units
-        dropout_rate = best_params.dropout_rate
-        optimizer_name = best_params.d_optimizer
-        epochs = best_params.d_epochs
-        batch_size = best_params.d_batch_size
+    lstm_units = user_options.d_lstm_units
+    dropout_rate = user_options.d_dropout_rate
+    optimizer_name = user_options.d_optimizer
+    epochs = user_options.d_epochs
+    batch_size = user_options.d_batch_size
 
     model = Sequential([
         LSTM(units=lstm_units, return_sequences=True, input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])),
@@ -54,8 +42,6 @@ def train_model(df, user_options, best_params=None):
 
     # Create prediction for test data
     model_data.y_predicted_test = model.predict(model_data.x_test)
-
-    print(f"Shape of model_data.y_predicted_test after fit: {model_data.x_train.shape}")
 
     return model, model_data
 
