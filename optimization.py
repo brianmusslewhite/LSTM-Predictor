@@ -50,7 +50,7 @@ def optimize_parameters(df, user_options, optimization_options):
                 mse = mean_squared_error(model_data.y_test[:, t, f], y_pred[:, t, f])
                 mse_per_timestep.append(mse)
 
-        mse = np.mean(mse_per_timestep)
+        mse = round(np.mean(mse_per_timestep), 15)
 
         optimization_results.append({'mse': mse, 'params': potential_params})
 

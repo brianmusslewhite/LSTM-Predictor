@@ -25,7 +25,7 @@ if __name__ == '__main__':
         scaling_method_options=['minmax', 'log'],
         sequence_length_options=[60, 90, 120],
         epochs_options=[50],
-        train_size_ratio_options=[0.75, 0.8, 0.85],
+        train_size_ratio_options=[0.8],
         lstm_units_options=[30, 50, 70, 100, 150, 200],
         dropout_rate_options=[0.1, 0.2, 0.3, 0.4, 0.5],
         batch_size_options=[8, 16, 32, 64, 128, 256],
@@ -39,18 +39,15 @@ if __name__ == '__main__':
     if user_options.perform_optimization:
         lowest_error, best_params = optimize_parameters(df, user_options, optimization_options)
         print(f"Best MSE: {lowest_error}, Best Parameters: {best_params}")
-        #model, model_data = train_model()
     else:
         model, model_data = train_model(df, user_options)
         future_predictions = predict_future_prices(model, model_data.x_test[-1], user_options.days_to_predict, model_data.scaler)
         plot_results(model_data, user_options, future_predictions)
 
-    
-
 # TO-DO:
-# Fix Optimization
+# Plot optimal model after optimization
 #
 # Future predictions fit to weekends
 # Check if data is non-stationary and fix if so
-# Fix input data to have 5 data points per week
+# Fix input data to have 5 data points per week (weekends)
 # Cross-Validation folding
