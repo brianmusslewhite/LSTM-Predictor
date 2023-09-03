@@ -1,32 +1,15 @@
 import numpy as np
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambda
+from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambda, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
 
 from preprocessing import process_for_model
 
 
 def train_model(df, user_options):
-    # Split, normalize, and prepare data for a multi-step model
     model_data = process_for_model(df, user_options)
-
-    lstm_units = user_options.d_lstm_units
-    dropout_rate = user_options.d_dropout_rate
-    optimizer_name = user_options.d_optimizer
-    epochs = user_options.d_epochs
-    batch_size = user_options.d_batch_size
-
-    model = Sequential([
-        LSTM(units=lstm_units, return_sequences=True, input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])),
-        Dropout(dropout_rate),
-        LSTM(units=lstm_units, return_sequences=True),
-        Dropout(dropout_rate),
-        TimeDistributed(Dense(units=2)),
-        Lambda(lambda x: x[:, -user_options.days_to_predict:, :])
-    ])
-
-    model.compile(optimizer=optimizer_name, loss='mean_squared_error')
+    model = build_model(model_data, user_options)
 
     if user_options.use_early_stopping:
         early_stopping = EarlyStopping(
@@ -38,12 +21,37 @@ def train_model(df, user_options):
     else:
         callbacks_list = []
 
-    model.fit(model_data.x_train, model_data.y_train, epochs=epochs, batch_size=batch_size, validation_data=(model_data.x_test, model_data.y_test), callbacks=callbacks_list, verbose=0)
-
-    # Create prediction for test data
+    model.fit(model_data.x_train, model_data.y_train, epochs=user_options.d_epochs, batch_size=user_options.d_batch_size, validation_data=(model_data.x_test, model_data.y_test), callbacks=callbacks_list, verbose=0)
     model_data.y_predicted_test = model.predict(model_data.x_test)
 
     return model, model_data
+
+
+def build_model(model_data, user_options):
+    model = Sequential()
+
+    if user_options.d_model_type == 'default':
+        model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True, input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
+        model.add(Dropout(user_options.d_dropout_rate))
+
+        for _ in range(1, user_options.d_num_layers):
+            model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True))
+            model.add(Dropout(user_options.d_dropout_rate))
+
+    elif user_options.d_model_type == 'bidirectional':
+        model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
+        model.add(Dropout(user_options.d_dropout_rate))
+
+        for _ in range(1, user_options.d_num_layers):
+            model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True)))
+            model.add(Dropout(user_options.d_dropout_rate))
+
+    model.add(TimeDistributed(Dense(units=2)))
+    model.add(Lambda(lambda x: x[:, -user_options.days_to_predict:, :]))
+
+    model.compile(optimizer=user_options.d_optimizer, loss='mean_squared_error')
+
+    return model
 
 
 def predict_future_prices(model, last_sequence, n_future_predictions, scaler):

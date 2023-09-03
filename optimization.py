@@ -16,7 +16,8 @@ def optimize_parameters(df, user_options, optimization_options):
     parameter_combinations = list(itertools.product(optimization_options.scaling_method_options, optimization_options.sequence_length_options, optimization_options.epochs_options,
                                                     optimization_options.train_size_ratio_options, optimization_options.lstm_units_options, optimization_options.dropout_rate_options, 
                                                     optimization_options.batch_size_options, optimization_options.optimizer_options, optimization_options.learning_rate_options,
-                                                    optimization_options.beta_1_options, optimization_options.beta_2_options))
+                                                    optimization_options.beta_1_options, optimization_options.beta_2_options, optimization_options.model_type_options,
+                                                    optimization_options.model_layer_options))
     optimization_results = []
 
     if not os.path.exists('optimization_results'):
@@ -26,7 +27,7 @@ def optimize_parameters(df, user_options, optimization_options):
     file_name = f'optimization_results/optimization_results_{now}.txt'
 
     def train_and_evaluate(potential_params):
-        scaling_method, sequence_length, epochs, train_size_ratio, lstm_units, dropout_rate, batch_size, optimizer_name, learning_rate, beta_1, beta_2 = potential_params
+        scaling_method, sequence_length, epochs, train_size_ratio, lstm_units, dropout_rate, batch_size, optimizer_name, learning_rate, beta_1, beta_2, model_type, model_layers = potential_params
 
         temp_user_options = copy.deepcopy(user_options)
         temp_user_options.d_scaling_method = scaling_method
@@ -36,6 +37,8 @@ def optimize_parameters(df, user_options, optimization_options):
         temp_user_options.d_lstm_units = lstm_units
         temp_user_options.d_dropout_rate = dropout_rate
         temp_user_options.d_batch_size = batch_size
+        temp_user_options.d_model_type = model_type
+        temp_user_options.d_model_layers = model_layers
 
         if optimizer_name == 'Adam':
             optimizer = tf.keras.optimizers.Adam(
