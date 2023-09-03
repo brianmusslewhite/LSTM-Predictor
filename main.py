@@ -73,3 +73,10 @@ if __name__ == '__main__':
     else:
         model, model_data = train_model(df, user_options)
         plot_results(model_data, user_options)
+# TO-DO:
+# Fix Dates in Plot
+# Fix Optimization
+#
+#
+# Check if data is non-stationary and fix if so
+# Cross-Validation folding
