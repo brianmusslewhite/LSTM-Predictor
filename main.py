@@ -9,27 +9,30 @@ if __name__ == '__main__':
     user_options = User_Options(
         file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
         feature_cols=['Close/Last', 'Volume'],
-        days_to_predict=15,
+        days_to_predict=10,
         perform_optimization=True,
         use_early_stopping=True,
         d_train_size_ratio=0.8,
         d_scaling_method='minmax',
-        d_sequence_length=90,
+        d_sequence_length=120,
         d_epochs=100,
-        d_lstm_units=150,
-        d_dropout_rate=0.1,
-        d_batch_size=16,
-        d_optimizer='adam'
+        d_lstm_units=200,
+        d_dropout_rate=0.3,
+        d_batch_size=4,
+        d_optimizer='adamax'
     )
     optimization_options = Optimization_Options(
-        scaling_method_options=['minmax', 'log'],
-        sequence_length_options=[60, 90, 120],
+        scaling_method_options=['minmax'],
+        sequence_length_options=[90],
         epochs_options=[50],
         train_size_ratio_options=[0.8],
-        lstm_units_options=[30, 50, 70, 100, 150, 200],
-        dropout_rate_options=[0.1, 0.2, 0.3, 0.4, 0.5],
-        batch_size_options=[8, 16, 32, 64, 128, 256],
-        optimizer_options=['adam', 'sgd', 'rmsprop', 'adagrad', 'adadelta', 'adamax', 'nadam', 'ftrl']
+        lstm_units_options=[150],
+        dropout_rate_options=[0.3],
+        batch_size_options=[8],
+        optimizer_options=['Adam', 'Adamax', 'Nadam'],
+        learning_rate_options=[1e-2, 1e-3, 1e-4],
+        beta_1_options=[0.9, 0.8],
+        beta_2_options=[0.999, 0.99]
     )
 
     # Load and clean data

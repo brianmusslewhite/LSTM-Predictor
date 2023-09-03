@@ -4,6 +4,7 @@ import itertools
 import numpy as np
 import os
 
+import tensorflow as tf
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import TimeSeriesSplit
 from tqdm import tqdm
@@ -14,7 +15,8 @@ from lstm_model import train_model
 def optimize_parameters(df, user_options, optimization_options):
     parameter_combinations = list(itertools.product(optimization_options.scaling_method_options, optimization_options.sequence_length_options, optimization_options.epochs_options,
                                                     optimization_options.train_size_ratio_options, optimization_options.lstm_units_options, optimization_options.dropout_rate_options, 
-                                                    optimization_options.batch_size_options, optimization_options.optimizer_options))
+                                                    optimization_options.batch_size_options, optimization_options.optimizer_options, optimization_options.learning_rate_options,
+                                                    optimization_options.beta_1_options, optimization_options.beta_2_options))
     optimization_results = []
 
     if not os.path.exists('optimization_results'):
@@ -24,7 +26,7 @@ def optimize_parameters(df, user_options, optimization_options):
     file_name = f'optimization_results/optimization_results_{now}.txt'
 
     def train_and_evaluate(potential_params):
-        scaling_method, sequence_length, epochs, train_size_ratio, lstm_units, dropout_rate, batch_size, optimizer = potential_params
+        scaling_method, sequence_length, epochs, train_size_ratio, lstm_units, dropout_rate, batch_size, optimizer_name, learning_rate, beta_1, beta_2 = potential_params
 
         temp_user_options = copy.deepcopy(user_options)
         temp_user_options.d_scaling_method = scaling_method
@@ -34,15 +36,33 @@ def optimize_parameters(df, user_options, optimization_options):
         temp_user_options.d_lstm_units = lstm_units
         temp_user_options.d_dropout_rate = dropout_rate
         temp_user_options.d_batch_size = batch_size
+
+        if optimizer_name == 'Adam':
+            optimizer = tf.keras.optimizers.Adam(
+                learning_rate=learning_rate,
+                beta_1=beta_1,
+                beta_2=beta_2
+            )
+        elif optimizer_name == 'Adamax':
+            optimizer = tf.keras.optimizers.Adamax(
+                learning_rate=learning_rate,
+                beta_1=beta_1,
+                beta_2=beta_2
+            )
+        elif optimizer_name == 'Nadam':
+            optimizer = tf.keras.optimizers.Nadam(
+                learning_rate=learning_rate,
+                beta_1=beta_1,
+                beta_2=beta_2
+            )
+        else:
+            raise ValueError(f"Unknown optimizer {optimizer_name}")
+
         temp_user_options.d_optimizer = optimizer
-
         model, model_data = train_model(df, temp_user_options)
-
         y_pred = model.predict(model_data.x_test)
-
         timesteps = model_data.y_train.shape[1]
         features = model_data.y_train.shape[2]
-
         mse_per_timestep = []
 
         for t in range(timesteps):
@@ -50,12 +70,11 @@ def optimize_parameters(df, user_options, optimization_options):
                 mse = mean_squared_error(model_data.y_test[:, t, f], y_pred[:, t, f])
                 mse_per_timestep.append(mse)
 
-        mse = round(np.mean(mse_per_timestep), 15)
-
+        mse = "{:.10f}".format(np.mean(mse_per_timestep))
         optimization_results.append({'mse': mse, 'params': potential_params})
 
         with open(file_name, 'a') as f:
-            f.write(f"MSE: {mse}, Parameters: Scaling Method - {scaling_method}, Sequence Length - {sequence_length}, Epochs - {epochs}, Train Size Ratio - {train_size_ratio}, LSTM Units - {lstm_units}, Dropout Rate - {dropout_rate}, Batch Size - {batch_size}, Optimizer - {optimizer}\n")
+            f.write(f"MSE: {mse}, Parameters: Scaling Method - {scaling_method}, Sequence Length - {sequence_length}, Epochs - {epochs}, Train Size Ratio - {train_size_ratio}, LSTM Units - {lstm_units}, Dropout Rate - {dropout_rate}, Batch Size - {batch_size}, Optimizer - {optimizer_name}, Learning Rate - {learning_rate}, Beta_1 - {beta_1}, Beta_2 - {beta_2}\n")
 
     for potential_params in tqdm(parameter_combinations, total=len(parameter_combinations)):
         train_and_evaluate(potential_params)

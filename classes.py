@@ -19,7 +19,8 @@ class User_Options:
 
 class Optimization_Options:
     def __init__(self, scaling_method_options, sequence_length_options, epochs_options, train_size_ratio_options,
-                 lstm_units_options, dropout_rate_options, batch_size_options, optimizer_options):
+                 lstm_units_options, dropout_rate_options, batch_size_options, optimizer_options, learning_rate_options,
+                 beta_1_options, beta_2_options):
         self.scaling_method_options = scaling_method_options
         self.sequence_length_options = sequence_length_options
         self.epochs_options = epochs_options
@@ -28,3 +29,6 @@ class Optimization_Options:
         self.dropout_rate_options = dropout_rate_options
         self.batch_size_options = batch_size_options
         self.optimizer_options = optimizer_options
+        self.learning_rate_options = learning_rate_options
+        self.beta_1_options = beta_1_options
+        self.beta_2_options = beta_2_options
