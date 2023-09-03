@@ -55,7 +55,7 @@ def optimize_parameters(df, user_options, optimization_options):
         optimization_results.append({'mse': mse, 'params': potential_params})
 
         with open(file_name, 'a') as f:
-            f.write(f"MSE: {mse}, Parameters: Scaling Method - {scaling_method} Sequence Length - {sequence_length} Epochs - {epochs} Train Size Ratio - {train_size_ratio} LSTM Units - {lstm_units}, Dropout Rate - {dropout_rate}, Batch Size - {batch_size}, Optimizer - {optimizer}\n")
+            f.write(f"MSE: {mse}, Parameters: Scaling Method - {scaling_method}, Sequence Length - {sequence_length}, Epochs - {epochs}, Train Size Ratio - {train_size_ratio}, LSTM Units - {lstm_units}, Dropout Rate - {dropout_rate}, Batch Size - {batch_size}, Optimizer - {optimizer}\n")
 
     for potential_params in tqdm(parameter_combinations, total=len(parameter_combinations)):
         train_and_evaluate(potential_params)
