@@ -5,15 +5,16 @@ from sklearn.preprocessing import MinMaxScaler, FunctionTransformer
 
 
 class Model_Data:
-    def __init__(self, x_train, y_train, x_test, y_test, test_start_date, train_start_date, scaler, y_prediction_test):
+    def __init__(self, x_train, y_train, x_test, y_test, train_size, train_dates, test_dates, scaler, y_predicted_test):
         self.x_train = x_train
         self.y_train = y_train
         self.x_test = x_test
         self.y_test = y_test
-        self.test_start_date = test_start_date
-        self.train_start_date = train_start_date
+        self.train_size = train_size
+        self.train_dates = train_dates
+        self.test_dates = test_dates
         self.scaler = scaler
-        self.y_prediction_test = y_prediction_test
+        self.y_prediction_test = y_predicted_test
 
 
 # Loads data from a file, converts date to datetime, sorts
@@ -50,6 +51,8 @@ def process_for_model(df, user_options, best_params=None):
     train_data = selected_data[:train_size]
     test_data = selected_data[train_size:]
 
+    original_dates = df['Date'].values
+
     if scaling_method == 'minmax':
         scaler = MinMaxScaler(feature_range=(0, 1))
         scaler.fit(train_data)
@@ -70,17 +73,29 @@ def process_for_model(df, user_options, best_params=None):
 
     normalized_data = np.concatenate((normalized_train_data, normalized_test_data), axis=0)
 
-    x_train, y_train, x_test, y_test = make_multi_step(normalized_data, sequence_length, user_options.days_to_predict, train_size)
+    # Generate x and y using the entire normalized dataset
+    x, y = make_multi_step(normalized_data, sequence_length, user_options.days_to_predict)
 
-    train_start_date = df['Date'].iloc[0]
-    test_start_date = df['Date'].iloc[train_size]
+    # The adjusted_train_size should be calculated as the original train_size,
+    # minus the offsets for the sequence and prediction lengths
+    adjusted_train_size = train_size - (sequence_length + user_options.days_to_predict)
+    adjusted_test_size = len(test_data) - (sequence_length + user_options.days_to_predict)
 
-    model_data = Model_Data(x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, test_start_date=test_start_date, train_start_date=train_start_date, scaler=scaler, y_prediction_test=None)
+    # Split the sequence data into training and test portions
+    x_train, x_test = x[:adjusted_train_size], x[adjusted_train_size:]
+    y_train, y_test = y[:adjusted_train_size], y[adjusted_train_size:]
+
+    train_dates = original_dates[sequence_length: sequence_length + adjusted_train_size]
+    test_dates = original_dates[train_size + sequence_length + user_options.days_to_predict: train_size + sequence_length + user_options.days_to_predict + adjusted_test_size]
+
+    model_data = Model_Data(x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, 
+                            train_size=adjusted_train_size, train_dates=train_dates, 
+                            test_dates=test_dates, scaler=scaler, y_predicted_test=None)
 
     return model_data
 
 
-def make_multi_step(normalized_data, sequence_length, days_to_predict, train_size):
+def make_multi_step(normalized_data, sequence_length, days_to_predict):
     x, y = [], []
 
     for i in range(len(normalized_data) - sequence_length - days_to_predict):
@@ -90,7 +105,4 @@ def make_multi_step(normalized_data, sequence_length, days_to_predict, train_siz
     x = np.array(x)
     y = np.array(y)
 
-    x_train, x_test = x[:train_size], x[train_size:]
-    y_train, y_test = y[:train_size], y[train_size:]
-
-    return x_train, y_train, x_test, y_test
+    return x, y

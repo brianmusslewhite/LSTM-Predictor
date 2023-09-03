@@ -1,5 +1,5 @@
 from preprocessing import load_and_clean_data
-from lstm_model import train_model
+from lstm_model import train_model, predict_future_prices
 from plotting import plot_results
 
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     user_options = User_Options(
         file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
         feature_cols=['Close/Last', 'Volume'],
-        days_to_predict=30,
+        days_to_predict=15,
         perform_optimization=False,
         use_early_stopping=True,
         d_train_size_ratio=0.8,
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         d_epochs=100,
         d_lstm_units=150,
         d_dropout_rate=0.1,
-        d_batch_size=32,
+        d_batch_size=16,
         d_optimizer='adam'
     )
     optimization_options = Optimization_Options(
@@ -72,11 +72,15 @@ if __name__ == '__main__':
         model, x_train, y_train, x_test, y_test = train_model()
     else:
         model, model_data = train_model(df, user_options)
-        plot_results(model_data, user_options)
+
+    future_predictions = predict_future_prices(model, model_data.x_test[-1], user_options.days_to_predict, model_data.scaler)
+
+    plot_results(model_data, user_options, future_predictions)
+
 # TO-DO:
-# Fix Dates in Plot
 # Fix Optimization
 #
-#
+# Future predictions fit to weekends
 # Check if data is non-stationary and fix if so
+# Fix input data to have 5 data points per week
 # Cross-Validation folding

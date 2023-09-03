@@ -11,6 +11,11 @@ def train_model(df, user_options, best_params=None):
     # Split, normalize, and prepare data for a multi-step model
     model_data = process_for_model(df, user_options, best_params)
 
+    print(f"Shape of model_data.x_train after process_for_model: {model_data.x_train.shape}")
+    print(f"Shape of model_data.y_train after process_for_model: {model_data.y_train.shape}")
+    print(f"Shape of model_data.x_test after process_for_model: {model_data.x_test.shape}")
+    print(f"Shape of model_data.y_test after process_for_model: {model_data.y_test.shape}")
+
     if best_params is None:
         lstm_units = user_options.d_lstm_units
         dropout_rate = user_options.d_dropout_rate
@@ -50,30 +55,34 @@ def train_model(df, user_options, best_params=None):
     # Create prediction for test data
     model_data.y_predicted_test = model.predict(model_data.x_test)
 
+    print(f"Shape of model_data.y_predicted_test after fit: {model_data.x_train.shape}")
+
     return model, model_data
 
 
-def predict_future_prices(model, last_known_sequence, scaler, params):
-    future_data = {}
-    current_sequence = last_known_sequence.copy()
+def predict_future_prices(model, last_sequence, n_future_predictions, scaler):
+    future_predictions = []
+    input_data = last_sequence.copy()  # Copy the last sequence from test data
 
-    for feature_name in params.feature_cols:
-        future_data[feature_name] = []
+    for _ in range(n_future_predictions):
+        # Reshape and expand dims to fit the input shape of the model: (batch_size, sequence_length, num_features)
+        model_input = np.expand_dims(input_data, axis=0)
 
-    steps_to_predict = last_known_sequence.shape[0]
+        # Make a prediction
+        prediction = model.predict(model_input)
 
-    for i in range(0, params.days_to_predict, steps_to_predict):
-        predicted = model.predict(current_sequence[np.newaxis, :, :])[0]
-        predicted = predicted.reshape(-1, len(params.feature_cols))
+        # Take the last time step from the predicted sequence and append it to future_predictions
+        last_timestep_prediction = prediction[0, -1, :]
+        future_predictions.append(last_timestep_prediction)
 
-        if scaler:
-            predicted_transformed = scaler.inverse_transform(predicted)
-        else:
-            predicted_transformed = predicted
+        # Remove the first time step from the input sequence
+        input_data = input_data[1:, :]
 
-        for j, feature_name in enumerate(params.feature_cols):
-            future_data[feature_name].extend(predicted_transformed[:, j])
+        # Append the last_timestep_prediction to the input sequence
+        input_data = np.vstack([input_data, last_timestep_prediction])
 
-        current_sequence = np.vstack((current_sequence[predicted.shape[0]:, :], predicted))
+    # If your data was scaled, apply inverse transform to the future predictions
+    if scaler is not None:
+        future_predictions = scaler.inverse_transform(future_predictions)
 
-    return future_data
+    return np.array(future_predictions)
