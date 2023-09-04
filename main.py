@@ -36,7 +36,7 @@ if __name__ == '__main__':
         dropout_rate_options=[0.2, 0.3, 0.4, 0.5],
         batch_size_options=[8, 16, 32, 64],
         optimizer_options=['Adamax'],
-        learning_rate_options=[1e-2, 1e-3, 1e-4, 5e-5],
+        learning_rate_options=[0.001],
         beta_1_options=[0.9],
         beta_2_options=[0.995],
         model_type_options=['lstmbidirectional'],

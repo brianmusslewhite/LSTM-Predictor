@@ -9,6 +9,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from tqdm import tqdm
 
 from lstm_model import train_model
+from relative_significance import run_relative_significance
 
 
 def optimize_parameters(df, user_options, optimization_options):
@@ -57,6 +58,8 @@ def optimize_parameters(df, user_options, optimization_options):
                     f"B2: {temp_user_options.d_beta_2}, "
                     f"MT: {temp_user_options.d_model_type}, "
                     f"ML: {temp_user_options.d_model_layers}\n")
+
+        run_relative_significance(file_name)
 
     for potential_params in tqdm(parameter_combinations, total=len(parameter_combinations)):
         train_and_evaluate(potential_params)

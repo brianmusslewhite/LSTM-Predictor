@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from sklearn.preprocessing import MinMaxScaler, FunctionTransformer, StandardScaler, RobustScaler, PowerTransformer, QuantileTransformer
+from sklearn.preprocessing import MinMaxScaler, StandardScaler, RobustScaler, PowerTransformer, QuantileTransformer
 
 
 class Model_Data:
