@@ -1,7 +1,7 @@
 import numpy as np
 
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambda, Bidirectional, Flatten, BatchNormalization
+from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambda, Bidirectional, Flatten, BatchNormalization, Conv1D, MaxPooling1D
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.regularizers import l1_l2
 from tensorflow.keras.optimizers import Adam, Adamax, Nadam
@@ -31,6 +31,8 @@ def train_model(df, user_options):
 
 def build_model(model_data, user_options):
     model = Sequential()
+
+    # Build optimizer
     if user_options.d_optimizer == 'Adam':
         optimizer = Adam(
             learning_rate=user_options.d_learning_rate,
@@ -52,6 +54,7 @@ def build_model(model_data, user_options):
     else:
         raise ValueError(f"Unknown optimizer {user_options.d_optimizer}")
 
+    # Build Model
     if user_options.d_model_type == 'lstm':
         model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True,
                        recurrent_regularizer=l1_l2(l1=0.001, l2=0),
@@ -86,25 +89,55 @@ def build_model(model_data, user_options):
         # First BiLSTM layer with BatchNormalization and Dropout
         model.add(Bidirectional(LSTM(units=128, return_sequences=True, recurrent_regularizer=l1_l2(l1=1e-5, l2=1e-4)), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
         model.add(BatchNormalization())
-        model.add(Dropout(0.2))
+        model.add(Dropout(user_options.d_dropout_rate))
 
         # Second and Third LSTM layers with BatchNormalization and Dropout
         model.add(LSTM(units=64, return_sequences=True))
         model.add(BatchNormalization())
-        model.add(Dropout(0.2))
+        model.add(Dropout(user_options.d_dropout_rate))
 
         model.add(LSTM(units=64, return_sequences=True))
         model.add(BatchNormalization())
-        model.add(Dropout(0.2))
+        model.add(Dropout(user_options.d_dropout_rate))
 
         # Fourth LSTM layer
         model.add(LSTM(units=32, return_sequences=True))
 
         # Fully connected layer
         model.add(TimeDistributed(Dense(units=128, activation='relu')))
-        model.add(Dropout(0.2))
+        model.add(Dropout(user_options.d_dropout_rate))
 
         # Output layer
+        model.add(TimeDistributed(Dense(units=len(user_options.feature_cols), activation='linear')))  # 'linear' for regression tasks
+
+    elif user_options.d_model_type == 'cnnlstm':
+        # Convolutional Layer to detect local patterns
+        model.add(Conv1D(filters=64, kernel_size=3, activation='relu', input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
+        model.add(BatchNormalization())
+        model.add(MaxPooling1D(pool_size=2))
+        model.add(Dropout(0.2))
+
+        # First Bidirectional LSTM Layer
+        model.add(Bidirectional(LSTM(units=128, return_sequences=True, recurrent_regularizer=l1_l2(l1=1e-5, l2=1e-4))))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.4))
+
+        # Second and Third LSTM Layers
+        model.add(LSTM(units=64, return_sequences=True))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.3))
+
+        model.add(LSTM(units=64, return_sequences=True))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.3))
+
+        # Fully Connected Layers
+        model.add(TimeDistributed(Dense(units=128, activation='relu')))
+        model.add(Dropout(0.4))
+        model.add(TimeDistributed(Dense(units=64, activation='relu')))
+        model.add(Dropout(0.3))
+
+        # Output Layer
         model.add(TimeDistributed(Dense(units=len(user_options.feature_cols), activation='linear')))  # 'linear' for regression tasks
 
     model.add(Lambda(lambda x: x[:, -user_options.days_to_predict:, :]))
