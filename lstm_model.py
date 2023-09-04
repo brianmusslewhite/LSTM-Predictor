@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambda, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.regularizers import l1_l2
 
 from preprocessing import process_for_model
 
@@ -53,19 +54,31 @@ def build_model(model_data, user_options):
     model = Sequential()
 
     if user_options.d_model_type == 'lstm':
-        model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True, input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
+        model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True,
+                       recurrent_regularizer=l1_l2(l1=0.01, l2=0.01),
+                       kernel_regularizer=l1_l2(l1=0.01, l2=0.01),
+                       input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
         model.add(Dropout(user_options.d_dropout_rate))
 
         for _ in range(1, user_options.d_model_layers):
-            model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True))
+            model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True,
+                           recurrent_regularizer=l1_l2(l1=0.01, l2=0.01),
+                           kernel_regularizer=l1_l2(l1=0.01, l2=0.01),
+                           input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
             model.add(Dropout(user_options.d_dropout_rate))
 
     elif user_options.d_model_type == 'lstmbidirectional':
-        model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True, recurrent_regularizer='l1'), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
+        model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True,
+                                recurrent_regularizer=l1_l2(l1=0.01, l2=0.01),
+                                kernel_regularizer=l1_l2(l1=0.01, l2=0.01),
+                                input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2]))))
         model.add(Dropout(user_options.d_dropout_rate))
 
         for _ in range(1, user_options.d_model_layers):
-            model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True)))
+            model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True,
+                                         recurrent_regularizer=l1_l2(l1=0.01, l2=0.01),
+                                         kernel_regularizer=l1_l2(l1=0.01, l2=0.01),
+                                         input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2]))))
             model.add(Dropout(user_options.d_dropout_rate))
 
     # Additional Dense Layer

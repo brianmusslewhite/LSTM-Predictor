@@ -11,7 +11,7 @@ if __name__ == '__main__':
         feature_cols=['Close/Last', 'Volume'],
         days_to_predict=5,
         days_to_forecast=20,
-        perform_optimization=True,
+        perform_optimization=False,
         use_early_stopping=True,
         d_train_size_ratio=0.8,
         d_scaling_method='minmax',
