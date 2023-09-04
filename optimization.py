@@ -51,7 +51,7 @@ def optimize_parameters(df, user_options, optimization_options):
                     f"LSTM: {temp_user_options.d_lstm_units}, "
                     f"Dropout: {temp_user_options.d_dropout_rate}, "
                     f"Batch: {temp_user_options.d_batch_size}, "
-                    f"Opt: {temp_user_options.d_optimizer_name}, "
+                    f"Opt: {temp_user_options.d_optimizer}, "
                     f"LR: {temp_user_options.d_learning_rate}, "
                     f"B1: {temp_user_options.d_beta_1}, "
                     f"B2: {temp_user_options.d_beta_2}, "

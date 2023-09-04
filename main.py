@@ -9,9 +9,9 @@ if __name__ == '__main__':
     user_options = User_Options(
         file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
         feature_cols=['Close/Last', 'Volume'],
-        days_to_predict=1,
+        days_to_predict=5,
         days_to_forecast=20,
-        perform_optimization=False,
+        perform_optimization=True,
         use_early_stopping=True,
         d_train_size_ratio=0.8,
         d_scaling_method='minmax',
@@ -25,18 +25,18 @@ if __name__ == '__main__':
         d_beta_1=0.9,
         d_beta_2=0.995,
         d_model_type='lstmbidirectional',
-        d_model_layers=2
+        d_model_layers=0
     )
     optimization_options = Optimization_Options(
-        scaling_method_options=['standard', 'robust', 'power', 'quantile', 'minmax'],
-        sequence_length_options=[60],  # [30, 60, 90, 120],
+        scaling_method_options=['minmax'],
+        sequence_length_options=[30, 60, 90, 120],
         epochs_options=[100],
         train_size_ratio_options=[0.8],
-        lstm_units_options=[128],  # [32, 64, 128, 256],
-        dropout_rate_options=[0.3],
-        batch_size_options=[8],
-        optimizer_options=['Adamax', 'Nadam', 'Adam'],
-        learning_rate_options=[1e-2, 1e-3],
+        lstm_units_options=[32, 64, 128, 256],
+        dropout_rate_options=[0.2, 0.3, 0.4, 0.5],
+        batch_size_options=[8, 16, 32, 64],
+        optimizer_options=['Adamax'],
+        learning_rate_options=[1e-2, 1e-3, 1e-4, 5e-5],
         beta_1_options=[0.9],
         beta_2_options=[0.995],
         model_type_options=['lstmbidirectional'],
@@ -46,12 +46,13 @@ if __name__ == '__main__':
     # Load and clean data
     df = load_and_clean_data(user_options.file_path, user_options.feature_cols)
 
-    # Perform hyperparameter optimization if specified and train the model
+    # Perform hyperparameter optimization if specified
     if user_options.perform_optimization:
         lowest_error, best_params = optimize_parameters(df, user_options, optimization_options)
         print(f"Best MSE: {lowest_error}, Best Parameters: {best_params}")
         user_options = potential_params_to_user_options(best_params, user_options)
 
+    # Train mode, predict the future, and plot results
     model, model_data = train_model(df, user_options)
     future_predictions = predict_future(model, model_data.x_test[-1], user_options.days_to_forecast, model_data.scaler, len(user_options.feature_cols))
     plot_results(model_data, user_options, future_predictions)

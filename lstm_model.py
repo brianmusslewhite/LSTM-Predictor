@@ -69,7 +69,7 @@ def build_model(model_data, user_options):
             model.add(Dropout(user_options.d_dropout_rate))
 
     # Additional Dense Layer
-    model.add(TimeDistributed(Dense(units=20, activation='relu')))
+    # model.add(TimeDistributed(Dense(units=20, activation='relu')))
 
     model.add(TimeDistributed(Dense(units=2)))
     model.add(Lambda(lambda x: x[:, -user_options.days_to_predict:, :]))
