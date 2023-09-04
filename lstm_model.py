@@ -1,10 +1,10 @@
 import numpy as np
 
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambda, Bidirectional
+from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambda, Bidirectional, Flatten, BatchNormalization
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.regularizers import l1_l2
+from tensorflow.keras.optimizers import Adam, Adamax, Nadam
 
 from preprocessing import process_for_model
 
@@ -30,20 +30,21 @@ def train_model(df, user_options):
 
 
 def build_model(model_data, user_options):
+    model = Sequential()
     if user_options.d_optimizer == 'Adam':
-        optimizer = tf.keras.optimizers.Adam(
+        optimizer = Adam(
             learning_rate=user_options.d_learning_rate,
             beta_1=user_options.d_beta_1,
             beta_2=user_options.d_beta_2
         )
     elif user_options.d_optimizer == 'Adamax':
-        optimizer = tf.keras.optimizers.Adamax(
+        optimizer = Adamax(
             learning_rate=user_options.d_learning_rate,
             beta_1=user_options.d_beta_1,
             beta_2=user_options.d_beta_2
         )
     elif user_options.d_optimizer == 'Nadam':
-        optimizer = tf.keras.optimizers.Nadam(
+        optimizer = Nadam(
             learning_rate=user_options.d_learning_rate,
             beta_1=user_options.d_beta_1,
             beta_2=user_options.d_beta_2
@@ -51,42 +52,62 @@ def build_model(model_data, user_options):
     else:
         raise ValueError(f"Unknown optimizer {user_options.d_optimizer}")
 
-    model = Sequential()
-
     if user_options.d_model_type == 'lstm':
         model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True,
-                       recurrent_regularizer=l1_l2(l1=0.01, l2=0.01),
-                       kernel_regularizer=l1_l2(l1=0.01, l2=0.01),
+                       recurrent_regularizer=l1_l2(l1=0.001, l2=0),
+                       kernel_regularizer=l1_l2(l1=0.001, l2=0),
                        input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
         model.add(Dropout(user_options.d_dropout_rate))
 
         for _ in range(1, user_options.d_model_layers):
             model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True,
-                           recurrent_regularizer=l1_l2(l1=0.01, l2=0.01),
-                           kernel_regularizer=l1_l2(l1=0.01, l2=0.01),
+                           recurrent_regularizer=l1_l2(l1=0.001, l2=0),
+                           kernel_regularizer=l1_l2(l1=0.001, l2=0),
                            input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
             model.add(Dropout(user_options.d_dropout_rate))
+        model.add(TimeDistributed(Dense(units=2, activation='relu')))
 
     elif user_options.d_model_type == 'lstmbidirectional':
         model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True,
-                                recurrent_regularizer=l1_l2(l1=0.01, l2=0.01),
-                                kernel_regularizer=l1_l2(l1=0.01, l2=0.01),
+                                recurrent_regularizer=l1_l2(l1=0.001, l2=0.00001),
+                                kernel_regularizer=l1_l2(l1=0.001, l2=0.00001),
                                 input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2]))))
         model.add(Dropout(user_options.d_dropout_rate))
 
         for _ in range(1, user_options.d_model_layers):
             model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True,
-                                         recurrent_regularizer=l1_l2(l1=0.01, l2=0.01),
-                                         kernel_regularizer=l1_l2(l1=0.01, l2=0.01),
+                                         recurrent_regularizer=l1_l2(l1=0.001, l2=0.00001),
+                                         kernel_regularizer=l1_l2(l1=0.001, l2=0.00001),
                                          input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2]))))
             model.add(Dropout(user_options.d_dropout_rate))
+        model.add(TimeDistributed(Dense(units=2, activation='relu')))
 
-    # Additional Dense Layer
-    # model.add(TimeDistributed(Dense(units=20, activation='relu')))
+    elif user_options.d_model_type == 'complexlstm':
+        # First BiLSTM layer with BatchNormalization and Dropout
+        model.add(Bidirectional(LSTM(units=128, return_sequences=True, recurrent_regularizer=l1_l2(l1=1e-5, l2=1e-4)), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))
 
-    model.add(TimeDistributed(Dense(units=2)))
+        # Second and Third LSTM layers with BatchNormalization and Dropout
+        model.add(LSTM(units=64, return_sequences=True))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))
+
+        model.add(LSTM(units=64, return_sequences=True))
+        model.add(BatchNormalization())
+        model.add(Dropout(0.2))
+
+        # Fourth LSTM layer
+        model.add(LSTM(units=32, return_sequences=True))
+
+        # Fully connected layer
+        model.add(TimeDistributed(Dense(units=128, activation='relu')))
+        model.add(Dropout(0.2))
+
+        # Output layer
+        model.add(TimeDistributed(Dense(units=len(user_options.feature_cols), activation='linear')))  # 'linear' for regression tasks
+
     model.add(Lambda(lambda x: x[:, -user_options.days_to_predict:, :]))
-
     model.compile(optimizer=optimizer, loss='mean_squared_error')
 
     return model

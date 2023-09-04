@@ -19,13 +19,13 @@ if __name__ == '__main__':
         d_epochs=100,
         d_lstm_units=64,
         d_dropout_rate=0.3,
-        d_batch_size=8,
-        d_optimizer='Adamax',
-        d_learning_rate=0.001,
+        d_batch_size=16,
+        d_optimizer='Adam',
+        d_learning_rate=1e-4,
         d_beta_1=0.9,
         d_beta_2=0.995,
-        d_model_type='lstmbidirectional',
-        d_model_layers=0
+        d_model_type='complexlstm',
+        d_model_layers=1
     )
     optimization_options = Optimization_Options(
         scaling_method_options=['minmax'],
