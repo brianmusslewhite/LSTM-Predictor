@@ -47,6 +47,7 @@ def plot_results(model_data, user_options, future_predictions=None, best_params=
     file_name = user_options.file_path.split('/')[-1].replace('.csv', '')
 
     filename = (f"pictures/{file_name}_"
+                f"Scale-{user_options.d_scaling_method}"
                 f"SL-{user_options.d_sequence_length}_"
                 f"E-{user_options.d_epochs}_"
                 f"FD-{user_options.days_to_predict}_"
@@ -56,12 +57,12 @@ def plot_results(model_data, user_options, future_predictions=None, best_params=
                 f"LSTM-{user_options.d_lstm_units}_"
                 f"Dropout-{user_options.d_dropout_rate}_"
                 f"Batch-{user_options.d_batch_size}_"
-                f"Optimizer-{user_options.d_optimizer}_"
-                f"LearningRate-{user_options.d_learning_rate}_"
-                f"Beta1-{user_options.d_beta_1}_"
-                f"Beta2-{user_options.d_beta_2}_"
-                f"ModelType-{user_options.d_model_type}_"
-                f"ModelLayers-{user_options.d_num_layers}.png")
+                f"Opt-{user_options.d_optimizer}_"
+                f"LR-{user_options.d_learning_rate}_"
+                f"B1-{user_options.d_beta_1}_"
+                f"B2-{user_options.d_beta_2}_"
+                f"MT-{user_options.d_model_type}_"
+                f"ML-{user_options.d_model_layers}.png")
     plt.tight_layout()
     plt.savefig(filename)
     print(f"Plot saved as {filename}")

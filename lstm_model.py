@@ -30,19 +30,19 @@ def train_model(df, user_options):
 
 def build_model(model_data, user_options):
     if user_options.d_optimizer == 'Adam':
-        user_options.d_optimizer = tf.keras.optimizers.Adam(
+        optimizer = tf.keras.optimizers.Adam(
             learning_rate=user_options.d_learning_rate,
             beta_1=user_options.d_beta_1,
             beta_2=user_options.d_beta_2
         )
     elif user_options.d_optimizer == 'Adamax':
-        user_options.d_optimizer = tf.keras.optimizers.Adamax(
+        optimizer = tf.keras.optimizers.Adamax(
             learning_rate=user_options.d_learning_rate,
             beta_1=user_options.d_beta_1,
             beta_2=user_options.d_beta_2
         )
     elif user_options.d_optimizer == 'Nadam':
-        user_options.d_optimizer = tf.keras.optimizers.Nadam(
+        optimizer = tf.keras.optimizers.Nadam(
             learning_rate=user_options.d_learning_rate,
             beta_1=user_options.d_beta_1,
             beta_2=user_options.d_beta_2
@@ -74,7 +74,7 @@ def build_model(model_data, user_options):
     model.add(TimeDistributed(Dense(units=2)))
     model.add(Lambda(lambda x: x[:, -user_options.days_to_predict:, :]))
 
-    model.compile(optimizer=user_options.d_optimizer, loss='mean_squared_error')
+    model.compile(optimizer=optimizer, loss='mean_squared_error')
 
     return model
 

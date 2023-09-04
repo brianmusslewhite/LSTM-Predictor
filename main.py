@@ -9,7 +9,7 @@ if __name__ == '__main__':
     user_options = User_Options(
         file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
         feature_cols=['Close/Last', 'Volume'],
-        days_to_predict=3,
+        days_to_predict=1,
         days_to_forecast=20,
         perform_optimization=False,
         use_early_stopping=True,
@@ -35,12 +35,12 @@ if __name__ == '__main__':
         lstm_units_options=[128],  # [32, 64, 128, 256],
         dropout_rate_options=[0.3],
         batch_size_options=[8],
-        optimizer_options=['Adamax', 'Nadam'],
+        optimizer_options=['Adamax', 'Nadam', 'Adam'],
         learning_rate_options=[1e-2, 1e-3],
         beta_1_options=[0.9],
         beta_2_options=[0.995],
         model_type_options=['lstmbidirectional'],
-        model_layer_options=[2]
+        model_layer_options=[0]
     )
 
     # Load and clean data
