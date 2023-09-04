@@ -1,7 +1,7 @@
 from preprocessing import load_and_clean_data
 from lstm_model import train_model, predict_future
 from plotting import plot_results
-from optimization import optimize_parameters
+from optimization import optimize_parameters, potential_params_to_user_options
 from classes import User_Options, Optimization_Options
 
 
@@ -11,21 +11,21 @@ if __name__ == '__main__':
         feature_cols=['Close/Last', 'Volume'],
         days_to_predict=3,
         days_to_forecast=20,
-        perform_optimization=True,
+        perform_optimization=False,
         use_early_stopping=True,
         d_train_size_ratio=0.8,
-        d_scaling_method='robust',
+        d_scaling_method='minmax',
         d_sequence_length=90,
         d_epochs=100,
         d_lstm_units=64,
         d_dropout_rate=0.3,
         d_batch_size=8,
         d_optimizer='Adamax',
-        d_learning_rate=1e-2,
+        d_learning_rate=0.001,
         d_beta_1=0.9,
         d_beta_2=0.995,
         d_model_type='lstmbidirectional',
-        d_num_layers=2
+        d_model_layers=2
     )
     optimization_options = Optimization_Options(
         scaling_method_options=['standard', 'robust', 'power', 'quantile', 'minmax'],
@@ -50,14 +50,13 @@ if __name__ == '__main__':
     if user_options.perform_optimization:
         lowest_error, best_params = optimize_parameters(df, user_options, optimization_options)
         print(f"Best MSE: {lowest_error}, Best Parameters: {best_params}")
-    else:
-        model, model_data = train_model(df, user_options)
-        future_predictions = predict_future(model, model_data.x_test[-1], user_options.days_to_forecast, model_data.scaler, len(user_options.feature_cols))
-        plot_results(model_data, user_options, future_predictions)
+        user_options = potential_params_to_user_options(best_params, user_options)
+
+    model, model_data = train_model(df, user_options)
+    future_predictions = predict_future(model, model_data.x_test[-1], user_options.days_to_forecast, model_data.scaler, len(user_options.feature_cols))
+    plot_results(model_data, user_options, future_predictions)
 
 # TO-DO:
-# Plot optimal model after optimization
-# Update plot print file name
 # Future predictions fit to weekends
 # Check if data is non-stationary and fix if so
 # Fix input data to have 5 data points per week (weekends)

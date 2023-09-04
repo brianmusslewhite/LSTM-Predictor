@@ -46,11 +46,22 @@ def plot_results(model_data, user_options, future_predictions=None, best_params=
 
     file_name = user_options.file_path.split('/')[-1].replace('.csv', '')
 
-    if user_options.perform_optimization:
-        filename = f"pictures/{file_name}_SL-{params.sequence_length}_E-{params.epochs}_FD-{params.days_to_predict}_OPT-{params.perform_optimization}_ES-{params.use_early_stopping}_TSR-{params.train_size_ratio}_BestParams-LSTM-{best_params[0]}_Dropout-{best_params[1]}_Batch-{best_params[2]}_Optimizer-{best_params[3]}.png"
-    else:
-        filename = f"pictures/{file_name}_SL-{user_options.d_sequence_length}_E-{user_options.d_epochs}_FD-{user_options.days_to_predict}_OPT-{user_options.perform_optimization}_ES-{user_options.use_early_stopping}_TSR-{user_options.d_train_size_ratio}_Optimizer-{user_options.d_train_size_ratio}.png"
-
+    filename = (f"pictures/{file_name}_"
+                f"SL-{user_options.d_sequence_length}_"
+                f"E-{user_options.d_epochs}_"
+                f"FD-{user_options.days_to_predict}_"
+                f"OPT-{user_options.perform_optimization}_"
+                f"ES-{user_options.use_early_stopping}_"
+                f"TSR-{user_options.d_train_size_ratio}_"
+                f"LSTM-{user_options.d_lstm_units}_"
+                f"Dropout-{user_options.d_dropout_rate}_"
+                f"Batch-{user_options.d_batch_size}_"
+                f"Optimizer-{user_options.d_optimizer}_"
+                f"LearningRate-{user_options.d_learning_rate}_"
+                f"Beta1-{user_options.d_beta_1}_"
+                f"Beta2-{user_options.d_beta_2}_"
+                f"ModelType-{user_options.d_model_type}_"
+                f"ModelLayers-{user_options.d_num_layers}.png")
     plt.tight_layout()
     plt.savefig(filename)
     print(f"Plot saved as {filename}")

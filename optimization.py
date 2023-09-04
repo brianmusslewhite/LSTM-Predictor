@@ -26,21 +26,7 @@ def optimize_parameters(df, user_options, optimization_options):
     file_name = f'optimization_results/optimization_results_{now}.txt'
 
     def train_and_evaluate(potential_params):
-        scaling_method, sequence_length, epochs, train_size_ratio, lstm_units, dropout_rate, batch_size, optimizer_name, learning_rate, beta_1, beta_2, model_type, model_layers = potential_params
-
-        temp_user_options = copy.deepcopy(user_options)
-        temp_user_options.d_scaling_method = scaling_method
-        temp_user_options.d_sequence_length = sequence_length
-        temp_user_options.d_epochs = epochs
-        temp_user_options.d_train_size_ratio = train_size_ratio
-        temp_user_options.d_lstm_units = lstm_units
-        temp_user_options.d_dropout_rate = dropout_rate
-        temp_user_options.d_batch_size = batch_size
-        temp_user_options.d_model_type = model_type
-        temp_user_options.d_model_layers = model_layers
-        temp_user_options.d_learning_rate = learning_rate
-        temp_user_options.d_beta_1 = beta_1
-        temp_user_options.d_beta_2 = beta_2
+        temp_user_options = potential_params_to_user_options(potential_params, user_options)
 
         model, model_data = train_model(df, temp_user_options)
 
@@ -57,13 +43,47 @@ def optimize_parameters(df, user_options, optimization_options):
         optimization_results.append({'mse': mse, 'params': potential_params})
 
         with open(file_name, 'a') as f:
-            f.write(f"MSE: {mse}, Parameters: Scaling Method - {scaling_method}, Sequence Length - {sequence_length}, Epochs - {epochs}, Train Size Ratio - {train_size_ratio}, LSTM Units - {lstm_units}, Dropout Rate - {dropout_rate}, Batch Size - {batch_size}, Optimizer - {optimizer_name}, Learning Rate - {learning_rate}, Beta_1 - {beta_1}, Beta_2 - {beta_2}, Model Type - {model_type}, Model Layers - {model_layers}\n")
+            f.write(f"MSE: {mse}, "
+                    f"Scaling: {temp_user_options.d_scaling_method}, "
+                    f"SL: {temp_user_options.d_sequence_length}, "
+                    f"E: {temp_user_options.d_epochs}, "
+                    f"TSR: {temp_user_options.d_train_size_ratio}, "
+                    f"LSTM: {temp_user_options.d_lstm_units}, "
+                    f"Dropout: {temp_user_options.d_dropout_rate}, "
+                    f"Batch: {temp_user_options.d_batch_size}, "
+                    f"Opt: {temp_user_options.d_optimizer_name}, "
+                    f"LR: {temp_user_options.d_learning_rate}, "
+                    f"B1: {temp_user_options.d_beta_1}, "
+                    f"B2: {temp_user_options.d_beta_2}, "
+                    f"MT: {temp_user_options.d_model_type}, "
+                    f"ML: {temp_user_options.d_model_layers}\n")
 
     for potential_params in tqdm(parameter_combinations, total=len(parameter_combinations)):
         train_and_evaluate(potential_params)
 
     best_result = min(optimization_results, key=lambda x: x['mse'])
     return best_result['mse'], best_result['params']
+
+
+def potential_params_to_user_options(potential_params, user_options):
+    scaling_method, sequence_length, epochs, train_size_ratio, lstm_units, dropout_rate, batch_size, optimizer, learning_rate, beta_1, beta_2, model_type, model_layers = potential_params
+
+    temp_user_options = copy.deepcopy(user_options)
+    temp_user_options.d_scaling_method = scaling_method
+    temp_user_options.d_sequence_length = sequence_length
+    temp_user_options.d_epochs = epochs
+    temp_user_options.d_train_size_ratio = train_size_ratio
+    temp_user_options.d_lstm_units = lstm_units
+    temp_user_options.d_dropout_rate = dropout_rate
+    temp_user_options.d_batch_size = batch_size
+    temp_user_options.d_optimizer = optimizer
+    temp_user_options.d_learning_rate = learning_rate
+    temp_user_options.d_beta_1 = beta_1
+    temp_user_options.d_beta_2 = beta_2
+    temp_user_options.d_model_type = model_type
+    temp_user_options.d_model_layers = model_layers
+
+    return temp_user_options
 
 
 def time_series_cross_val(x, y, params, lstm_units, dropout_rate, batch_size, epochs, use_early_stopping, optimizer_name, n_splits=5):
