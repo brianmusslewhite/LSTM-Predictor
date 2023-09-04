@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from sklearn.preprocessing import MinMaxScaler, FunctionTransformer
+from sklearn.preprocessing import MinMaxScaler, FunctionTransformer, StandardScaler, RobustScaler, PowerTransformer, QuantileTransformer
 
 
 class Model_Data:
@@ -58,12 +58,26 @@ def process_for_model(df, user_options, best_params=None):
         scaler.fit(train_data)
         normalized_train_data = scaler.transform(train_data)
         normalized_test_data = scaler.transform(test_data)
-    elif scaling_method == 'log':
-        log_scaler = FunctionTransformer(np.log1p, np.expm1, validate=True)
-        log_scaler.fit(train_data)
-        normalized_train_data = log_scaler.transform(train_data)
-        normalized_test_data = log_scaler.transform(test_data)
-        scaler = log_scaler
+    elif scaling_method == 'standard':
+        scaler = StandardScaler()
+        scaler.fit(train_data)
+        normalized_train_data = scaler.transform(train_data)
+        normalized_test_data = scaler.transform(test_data)
+    elif scaling_method == 'robust':
+        scaler = RobustScaler()
+        scaler.fit(train_data)
+        normalized_train_data = scaler.transform(train_data)
+        normalized_test_data = scaler.transform(test_data)
+    elif scaling_method == 'power':
+        scaler = PowerTransformer(method='yeo-johnson', standardize=True)
+        scaler.fit(train_data)
+        normalized_train_data = scaler.transform(train_data)
+        normalized_test_data = scaler.transform(test_data)
+    elif scaling_method == 'quantile':
+        scaler = QuantileTransformer(output_distribution='uniform')
+        scaler.fit(train_data)
+        normalized_train_data = scaler.transform(train_data)
+        normalized_test_data = scaler.transform(test_data)    
     elif scaling_method is None:
         normalized_train_data = train_data
         normalized_test_data = test_data

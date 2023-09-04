@@ -61,12 +61,15 @@ def build_model(model_data, user_options):
             model.add(Dropout(user_options.d_dropout_rate))
 
     elif user_options.d_model_type == 'lstmbidirectional':
-        model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
+        model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True, recurrent_regularizer='l1'), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
         model.add(Dropout(user_options.d_dropout_rate))
 
         for _ in range(1, user_options.d_num_layers):
             model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True)))
             model.add(Dropout(user_options.d_dropout_rate))
+
+    # Additional Dense Layer
+    model.add(TimeDistributed(Dense(units=20, activation='relu')))
 
     model.add(TimeDistributed(Dense(units=2)))
     model.add(Lambda(lambda x: x[:, -user_options.days_to_predict:, :]))
@@ -76,40 +79,18 @@ def build_model(model_data, user_options):
     return model
 
 
-def predict_future_prices(model, last_sequence, n_future_predictions, scaler, num_features):
-    future_predictions = []
-    input_data = last_sequence.copy()  # Copy the last sequence from test data
+def predict_future(model, last_sequence, n_future_predictions, scaler, num_features):
+    future_predictions = np.zeros((n_future_predictions, num_features))
+    input_data = last_sequence.copy()
 
-    for _ in range(n_future_predictions):
-        # Reshape and expand dims to fit the input shape of the model: (batch_size, sequence_length, num_features)
+    for i in range(n_future_predictions):
         model_input = np.expand_dims(input_data[-num_features:], axis=0)
-
-        # Make a prediction
-        prediction = model.predict(model_input)
-
-        # Take the last time step from the predicted sequence and append it to future_predictions
-        last_timestep_prediction = prediction[0, -1, 0]  # Assuming the output has one feature
-        future_predictions.append(last_timestep_prediction)
-
-        # Remove the first time step from the input sequence
+        prediction = model.predict(model_input)[0, -1, :]
+        future_predictions[i, :] = prediction
         input_data = np.delete(input_data, 0, axis=0)
+        input_data = np.vstack([input_data, prediction])
 
-        # Append the last_timestep_prediction to the input sequence
-        new_row = np.zeros((1, num_features))
-        new_row[0, 0] = last_timestep_prediction  # Assuming the output should be added to the first feature column
-        input_data = np.vstack([input_data, new_row])
-
-    # If your data was scaled, apply inverse transform to the future predictions
     if scaler is not None:
-        future_predictions = scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
+        future_predictions = scaler.inverse_transform(future_predictions)
 
-    return np.array(future_predictions)
-
-# Usage
-# last_sequence = np.array([[...], [...], ...])  # Replace with the actual last sequence
-# n_future_predictions = 10  # Number of future points you want to predict
-# scaler = your_scaler  # Replace with your actual scaler object
-# num_features = last_sequence.shape[1]  # Number of features in your data
-# model = your_model  # Replace with your actual model
-
-# future_prices = predict_future_prices(model, last_sequence, n_future_predictions, scaler, num_features)
+    return future_predictions
