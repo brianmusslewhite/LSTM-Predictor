@@ -34,18 +34,22 @@ def load_and_clean_data(file_path, feature_cols):
 
 
 # Split, normalize, and make multi-step data that is ready for the model
-def process_for_model(df, user_options, best_params=None):
-    # Convert to float. Potentially move this to load and clean
-    selected_data = df[user_options.feature_cols].values.astype(float)
-
-    if best_params is None:
-        train_size_ratio = user_options.d_train_size_ratio
-        scaling_method = user_options.d_scaling_method
-        sequence_length = user_options.d_sequence_length
+def process_for_model(df, user_options=None):
+    if user_options is None:
+        train_size_ratio = 0.8
+        scaling_method = 'minmax'
+        sequence_length = 90
+        days_to_predict = 5
+        feature_cols = ['Close/Last', 'Volume']
     else:
-        train_size_ratio = best_params.train_size
-        scaling_method = best_params.scaling_method
-        sequence_length = best_params.sequence_length
+        train_size_ratio = user_options.train_size
+        scaling_method = user_options.scaling_method
+        sequence_length = user_options.sequence_length
+        days_to_predict = user_options.days_to_predict
+        feature_cols = user_options.feature_cols
+
+    # Convert to float. Potentially move this to load and clean
+    selected_data = df[feature_cols].values.astype(float)
 
     train_size = int(train_size_ratio * len(df))
     train_data = selected_data[:train_size]
@@ -88,19 +92,19 @@ def process_for_model(df, user_options, best_params=None):
     normalized_data = np.concatenate((normalized_train_data, normalized_test_data), axis=0)
 
     # Generate x and y using the entire normalized dataset
-    x, y = make_multi_step(normalized_data, sequence_length, user_options.days_to_predict)
+    x, y = make_multi_step(normalized_data, sequence_length, days_to_predict)
 
     # The adjusted_train_size should be calculated as the original train_size,
     # minus the offsets for the sequence and prediction lengths
-    adjusted_train_size = train_size - (sequence_length + user_options.days_to_predict)
-    adjusted_test_size = len(test_data) - (sequence_length + user_options.days_to_predict)
+    adjusted_train_size = train_size - (sequence_length + days_to_predict)
+    adjusted_test_size = len(test_data) - (sequence_length + days_to_predict)
 
     # Split the sequence data into training and test portions
     x_train, x_test = x[:adjusted_train_size], x[adjusted_train_size:]
     y_train, y_test = y[:adjusted_train_size], y[adjusted_train_size:]
 
     train_dates = original_dates[sequence_length: sequence_length + adjusted_train_size]
-    test_dates = original_dates[train_size + sequence_length + user_options.days_to_predict: train_size + sequence_length + user_options.days_to_predict + adjusted_test_size]
+    test_dates = original_dates[train_size + sequence_length + days_to_predict: train_size + sequence_length + days_to_predict + adjusted_test_size]
 
     model_data = Model_Data(x_train=x_train, y_train=y_train, x_test=x_test, y_test=y_test, 
                             train_size=adjusted_train_size, train_dates=train_dates, 
