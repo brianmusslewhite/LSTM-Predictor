@@ -1,5 +1,6 @@
 import numpy as np
 
+import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dropout, Dense, TimeDistributed, Lambda, Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
@@ -28,9 +29,30 @@ def train_model(df, user_options):
 
 
 def build_model(model_data, user_options):
+    if user_options.d_optimizer == 'Adam':
+        user_options.d_optimizer = tf.keras.optimizers.Adam(
+            learning_rate=user_options.d_learning_rate,
+            beta_1=user_options.d_beta_1,
+            beta_2=user_options.d_beta_2
+        )
+    elif user_options.d_optimizer == 'Adamax':
+        user_options.d_optimizer = tf.keras.optimizers.Adamax(
+            learning_rate=user_options.d_learning_rate,
+            beta_1=user_options.d_beta_1,
+            beta_2=user_options.d_beta_2
+        )
+    elif user_options.d_optimizer == 'Nadam':
+        user_options.d_optimizer = tf.keras.optimizers.Nadam(
+            learning_rate=user_options.d_learning_rate,
+            beta_1=user_options.d_beta_1,
+            beta_2=user_options.d_beta_2
+        )
+    else:
+        raise ValueError(f"Unknown optimizer {user_options.d_optimizer}")
+
     model = Sequential()
 
-    if user_options.d_model_type == 'default':
+    if user_options.d_model_type == 'lstm':
         model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True, input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
         model.add(Dropout(user_options.d_dropout_rate))
 
@@ -38,7 +60,7 @@ def build_model(model_data, user_options):
             model.add(LSTM(units=user_options.d_lstm_units, return_sequences=True))
             model.add(Dropout(user_options.d_dropout_rate))
 
-    elif user_options.d_model_type == 'bidirectional':
+    elif user_options.d_model_type == 'lstmbidirectional':
         model.add(Bidirectional(LSTM(units=user_options.d_lstm_units, return_sequences=True), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
         model.add(Dropout(user_options.d_dropout_rate))
 

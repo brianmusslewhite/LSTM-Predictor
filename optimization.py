@@ -4,7 +4,6 @@ import itertools
 import numpy as np
 import os
 
-import tensorflow as tf
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import TimeSeriesSplit
 from tqdm import tqdm
@@ -39,45 +38,26 @@ def optimize_parameters(df, user_options, optimization_options):
         temp_user_options.d_batch_size = batch_size
         temp_user_options.d_model_type = model_type
         temp_user_options.d_model_layers = model_layers
+        temp_user_options.d_learning_rate = learning_rate
+        temp_user_options.d_beta_1 = beta_1
+        temp_user_options.d_beta_2 = beta_2
 
-        if optimizer_name == 'Adam':
-            optimizer = tf.keras.optimizers.Adam(
-                learning_rate=learning_rate,
-                beta_1=beta_1,
-                beta_2=beta_2
-            )
-        elif optimizer_name == 'Adamax':
-            optimizer = tf.keras.optimizers.Adamax(
-                learning_rate=learning_rate,
-                beta_1=beta_1,
-                beta_2=beta_2
-            )
-        elif optimizer_name == 'Nadam':
-            optimizer = tf.keras.optimizers.Nadam(
-                learning_rate=learning_rate,
-                beta_1=beta_1,
-                beta_2=beta_2
-            )
-        else:
-            raise ValueError(f"Unknown optimizer {optimizer_name}")
-
-        temp_user_options.d_optimizer = optimizer
         model, model_data = train_model(df, temp_user_options)
-        y_pred = model.predict(model_data.x_test)
+
         timesteps = model_data.y_train.shape[1]
         features = model_data.y_train.shape[2]
         mse_per_timestep = []
 
         for t in range(timesteps):
             for f in range(features):
-                mse = mean_squared_error(model_data.y_test[:, t, f], y_pred[:, t, f])
+                mse = mean_squared_error(model_data.y_test[:, t, f], model_data.y_predicted_test[:, t, f])
                 mse_per_timestep.append(mse)
 
         mse = "{:.10f}".format(np.mean(mse_per_timestep))
         optimization_results.append({'mse': mse, 'params': potential_params})
 
         with open(file_name, 'a') as f:
-            f.write(f"MSE: {mse}, Parameters: Scaling Method - {scaling_method}, Sequence Length - {sequence_length}, Epochs - {epochs}, Train Size Ratio - {train_size_ratio}, LSTM Units - {lstm_units}, Dropout Rate - {dropout_rate}, Batch Size - {batch_size}, Optimizer - {optimizer_name}, Learning Rate - {learning_rate}, Beta_1 - {beta_1}, Beta_2 - {beta_2}\n")
+            f.write(f"MSE: {mse}, Parameters: Scaling Method - {scaling_method}, Sequence Length - {sequence_length}, Epochs - {epochs}, Train Size Ratio - {train_size_ratio}, LSTM Units - {lstm_units}, Dropout Rate - {dropout_rate}, Batch Size - {batch_size}, Optimizer - {optimizer_name}, Learning Rate - {learning_rate}, Beta_1 - {beta_1}, Beta_2 - {beta_2}, Model Type - {model_type}, Model Layers - {model_layers}\n")
 
     for potential_params in tqdm(parameter_combinations, total=len(parameter_combinations)):
         train_and_evaluate(potential_params)

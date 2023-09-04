@@ -9,34 +9,37 @@ if __name__ == '__main__':
     user_options = User_Options(
         file_path='HistoricalData_1692981828643_GME_NASDAQ.csv',
         feature_cols=['Close/Last', 'Volume'],
-        days_to_predict=10,
-        perform_optimization=True,
+        days_to_predict=5,
+        perform_optimization=False,
         use_early_stopping=True,
         d_train_size_ratio=0.8,
         d_scaling_method='minmax',
         d_sequence_length=300,
         d_epochs=100,
-        d_lstm_units=200,
+        d_lstm_units=64,
         d_dropout_rate=0.3,
         d_batch_size=4,
         d_optimizer='Adamax',
-        d_model_type='bidirectional',
-        d_num_layers=2
+        d_learning_rate=1e-4,
+        d_beta_1=0.9,
+        d_beta_2=0.995,
+        d_model_type='lstmbidirectional',
+        d_num_layers=1
     )
     optimization_options = Optimization_Options(
         scaling_method_options=['minmax'],
         sequence_length_options=[90],
         epochs_options=[100],
         train_size_ratio_options=[0.8],
-        lstm_units_options=[32, 64, 128, 256],
+        lstm_units_options=[64, 128, 256],
         dropout_rate_options=[0.3],
         batch_size_options=[8],
         optimizer_options=['Adamax', 'Nadam'],
         learning_rate_options=[1e-3, 1e-4, 5e-5],
         beta_1_options=[0.9, 0.8, 0.85],
         beta_2_options=[0.99, 0.98, 0.995],
-        model_type_options=['bidirectional'],
-        model_layer_options=[1, 2, 3, 4]
+        model_type_options=['lstmbidirectional'],
+        model_layer_options=[0, 1, 2, 3]
     )
 
     # Load and clean data
