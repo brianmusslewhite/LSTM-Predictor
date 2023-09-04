@@ -76,29 +76,40 @@ def build_model(model_data, user_options):
     return model
 
 
-def predict_future_prices(model, last_sequence, n_future_predictions, scaler):
+def predict_future_prices(model, last_sequence, n_future_predictions, scaler, num_features):
     future_predictions = []
     input_data = last_sequence.copy()  # Copy the last sequence from test data
 
     for _ in range(n_future_predictions):
         # Reshape and expand dims to fit the input shape of the model: (batch_size, sequence_length, num_features)
-        model_input = np.expand_dims(input_data, axis=0)
+        model_input = np.expand_dims(input_data[-num_features:], axis=0)
 
         # Make a prediction
         prediction = model.predict(model_input)
 
         # Take the last time step from the predicted sequence and append it to future_predictions
-        last_timestep_prediction = prediction[0, -1, :]
+        last_timestep_prediction = prediction[0, -1, 0]  # Assuming the output has one feature
         future_predictions.append(last_timestep_prediction)
 
         # Remove the first time step from the input sequence
-        input_data = input_data[1:, :]
+        input_data = np.delete(input_data, 0, axis=0)
 
         # Append the last_timestep_prediction to the input sequence
-        input_data = np.vstack([input_data, last_timestep_prediction])
+        new_row = np.zeros((1, num_features))
+        new_row[0, 0] = last_timestep_prediction  # Assuming the output should be added to the first feature column
+        input_data = np.vstack([input_data, new_row])
 
     # If your data was scaled, apply inverse transform to the future predictions
     if scaler is not None:
-        future_predictions = scaler.inverse_transform(future_predictions)
+        future_predictions = scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
 
     return np.array(future_predictions)
+
+# Usage
+# last_sequence = np.array([[...], [...], ...])  # Replace with the actual last sequence
+# n_future_predictions = 10  # Number of future points you want to predict
+# scaler = your_scaler  # Replace with your actual scaler object
+# num_features = last_sequence.shape[1]  # Number of features in your data
+# model = your_model  # Replace with your actual model
+
+# future_prices = predict_future_prices(model, last_sequence, n_future_predictions, scaler, num_features)

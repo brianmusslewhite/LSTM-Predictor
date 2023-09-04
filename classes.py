@@ -1,11 +1,12 @@
 class User_Options:
-    def __init__(self, file_path, feature_cols, days_to_predict, perform_optimization, use_early_stopping,
+    def __init__(self, file_path, feature_cols, days_to_predict, days_to_forecast, perform_optimization, use_early_stopping,
                  d_scaling_method, d_sequence_length, d_epochs, d_train_size_ratio, d_lstm_units,
                  d_dropout_rate, d_batch_size, d_optimizer, d_learning_rate, d_beta_1, d_beta_2, d_model_type, 
                  d_num_layers):
         self.file_path = file_path
         self.feature_cols = feature_cols
         self.days_to_predict = days_to_predict
+        self.days_to_forecast = days_to_forecast
         self.perform_optimization = perform_optimization
         self.use_early_stopping = use_early_stopping
         self.d_train_size_ratio = d_train_size_ratio
