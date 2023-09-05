@@ -38,13 +38,13 @@ def process_for_model(df, user_options=None):
     if user_options is None:
         train_size_ratio = 0.8
         scaling_method = 'minmax'
-        sequence_length = 90
-        days_to_predict = 5
+        sequence_length = 220
+        days_to_predict = 3
         feature_cols = ['Close/Last', 'Volume']
     else:
-        train_size_ratio = user_options.train_size
-        scaling_method = user_options.scaling_method
-        sequence_length = user_options.sequence_length
+        train_size_ratio = user_options.d_train_size_ratio
+        scaling_method = user_options.d_scaling_method
+        sequence_length = user_options.d_sequence_length
         days_to_predict = user_options.days_to_predict
         feature_cols = user_options.feature_cols
 

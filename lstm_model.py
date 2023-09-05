@@ -87,25 +87,25 @@ def build_model(model_data, user_options):
 
     elif user_options.d_model_type == 'complexlstm':
         # First BiLSTM layer with BatchNormalization and Dropout
-        model.add(Bidirectional(LSTM(units=128, return_sequences=True, recurrent_regularizer=l1_l2(l1=1e-5, l2=1e-4)), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
+        model.add(Bidirectional(LSTM(units=80, return_sequences=True, recurrent_regularizer=l1_l2(l1=1e-6, l2=1e-6)), input_shape=(model_data.x_train.shape[1], model_data.x_train.shape[2])))
         model.add(BatchNormalization())
-        model.add(Dropout(user_options.d_dropout_rate))
+        model.add(Dropout(0.3))
 
         # Second and Third LSTM layers with BatchNormalization and Dropout
-        model.add(LSTM(units=64, return_sequences=True))
+        model.add(LSTM(units=120, return_sequences=True))
         model.add(BatchNormalization())
-        model.add(Dropout(user_options.d_dropout_rate))
+        model.add(Dropout(0.5))
 
-        model.add(LSTM(units=64, return_sequences=True))
+        model.add(LSTM(units=32, return_sequences=True))
         model.add(BatchNormalization())
-        model.add(Dropout(user_options.d_dropout_rate))
+        model.add(Dropout(0.1))
 
         # Fourth LSTM layer
-        model.add(LSTM(units=32, return_sequences=True))
+        model.add(LSTM(units=64, return_sequences=True))
 
         # Fully connected layer
-        model.add(TimeDistributed(Dense(units=128, activation='relu')))
-        model.add(Dropout(user_options.d_dropout_rate))
+        model.add(TimeDistributed(Dense(units=64, activation='relu')))
+        model.add(Dropout(0.35))
 
         # Output layer
         model.add(TimeDistributed(Dense(units=len(user_options.feature_cols), activation='linear')))  # 'linear' for regression tasks
