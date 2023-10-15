@@ -26,7 +26,7 @@ def train_model(x_train, y_train, x_test=None, y_test=None, lstm_units=150, drop
 
     validation_data = (x_test, y_test) if x_test is not None and y_test is not None else None
 
-    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=validation_data, callbacks=callbacks_list, verbose=1)
+    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=validation_data, callbacks=callbacks_list, verbose=0)
 
     return model
 

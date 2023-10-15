@@ -3,3 +3,4 @@ HistoricalData*.csv
 /optimization_results
 /__pycache__
 .flake8
+/tuner_results
