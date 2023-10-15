@@ -31,7 +31,7 @@ if __name__ == '__main__':
     params = Parameters(
         file_path='/home/p1g3/Documents/LSTM Predictor/HistoricalData_1692981828643_GME_NASDAQ.csv',
         feature_cols=['Close/Last', 'Volume'],
-        sequence_length=90,
+        sequence_length=30,
         epochs=100,
         perform_optimization=True,
         use_early_stopping=True,
@@ -52,10 +52,10 @@ if __name__ == '__main__':
         tuner = BayesianOptimization(
             build_model,
             objective='val_loss',
-            max_trials=2,
+            max_trials=200,
             executions_per_trial=1,
             directory='tuner_results',
-            project_name='lstm_tuning_oct15_5'
+            project_name='lstm_tuning_oct15_7'
         )
 
         tuner.search(x_train, y_train, epochs=params.epochs, validation_data=(x_test, y_test))
