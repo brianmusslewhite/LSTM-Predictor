@@ -1,5 +1,3 @@
-import numpy as np
-
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dropout, Dense
 from tensorflow.keras.callbacks import EarlyStopping
@@ -11,7 +9,7 @@ def train_model(x_train, y_train, x_test=None, y_test=None, lstm_units=150, drop
         Dropout(dropout_rate),
         LSTM(units=lstm_units),
         Dropout(dropout_rate),
-        Dense(units=y_train.shape[1], activation='relu')
+        Dense(units=y_train.shape[1])
     ])
 
     model.compile(optimizer=optimizer_name, loss='mean_squared_error')
@@ -28,35 +26,23 @@ def train_model(x_train, y_train, x_test=None, y_test=None, lstm_units=150, drop
 
     validation_data = (x_test, y_test) if x_test is not None and y_test is not None else None
 
-    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=validation_data, callbacks=callbacks_list, verbose=0)
+    model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=validation_data, callbacks=callbacks_list, verbose=1)
 
     return model
 
 
-def predict_future_prices(model, last_known_sequence, scaler, params):
-    future_data = {}
-    current_sequence = last_known_sequence.copy()
+def predict_next_n_days(model, last_sequence, n_days):
+    predictions = []
 
-    for i in range(params.days_to_predict):
-        # Predict the next value based on the current sequence
-        predicted = model.predict(current_sequence[np.newaxis, :, :])[0]
+    input_sequence = last_sequence.copy()
 
-        # Save the predictions
-        for feature_idx, feature_name in enumerate(params.feature_cols):
-            if feature_name not in future_data:
-                future_data[feature_name] = []
-            future_data[feature_name].append(predicted[feature_idx])
+    for _ in range(n_days):
+        # Predict the next step (1 day in the future)
+        predicted_step = model.predict(input_sequence)
+        predictions.append(predicted_step[0])
 
-        # Prepare the input for the next prediction
-        current_sequence = np.roll(current_sequence, -1, axis=0)
-        current_sequence[-1] = predicted
+        # Update the input_sequence with the predicted value
+        input_sequence[:, :-1, :] = input_sequence[:, 1:, :]
+        input_sequence[:, -1, :] = predicted_step
 
-    # Inverse transform the scaled predictions
-    for feature_name in params.feature_cols:
-        feature_data = np.array(future_data[feature_name]).reshape(-1, 1)
-        dummy_array = np.zeros((len(feature_data), scaler.scale_.shape[0]))
-        feature_index = params.feature_cols.index(feature_name)
-        dummy_array[:, feature_index] = feature_data[:, 0]
-        future_data[feature_name] = scaler.inverse_transform(dummy_array)[:, feature_index]
-
-    return future_data
+    return predictions
