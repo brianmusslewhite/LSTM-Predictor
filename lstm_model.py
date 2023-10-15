@@ -1,5 +1,5 @@
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dropout, Dense
+from tensorflow.keras.layers import LSTM, Dropout, Dense, ReLU
 from tensorflow.keras.callbacks import EarlyStopping
 
 
@@ -9,7 +9,8 @@ def train_model(x_train, y_train, x_test=None, y_test=None, lstm_units1=150, lst
         Dropout(dropout_rate1),
         LSTM(units=lstm_units2),
         Dropout(dropout_rate2),
-        Dense(units=y_train.shape[1])
+        Dense(units=y_train.shape[1]),
+        ReLU()
     ])
 
     model.compile(optimizer=optimizer_name, loss='mean_squared_error')
