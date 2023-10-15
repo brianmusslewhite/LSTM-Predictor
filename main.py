@@ -1,7 +1,7 @@
 from preprocessing import load_and_preprocess_data, normalize_data, prepare_training_data
 from lstm_model import train_model, predict_next_n_days
 from plotting import plot_results
-from kerastuner import BayesianOptimization
+from keras_tuner.tuners import BayesianOptimization
 import pandas as pd
 
 
@@ -17,11 +17,14 @@ class Parameters:
 
 
 def build_model(hp):
-    lstm_units = hp.Int('lstm_units', 50, 800, step=25)
-    dropout_rate = hp.Float('dropout_rate', 0.01, 0.5, step=0.01)
-    batch_size = hp.Int('batch_size', 8, 64, step=8)  # Note: This will not affect model training directly in KerasTuner
+    lstm_units1 = hp.Int('lstm_units1', 50, 1000, step=50)
+    lstm_units2 = hp.Int('lstm_units2', 50, 1000, step=50)
+    dropout_rate1 = hp.Float('dropout_rate1', 0.01, 0.5, step=0.01)
+    dropout_rate2 = hp.Float('dropout_rate2', 0.01, 0.5, step=0.01)
+    batch_size = hp.Int('batch_size', 8, 64, step=8)
+    optimizer_choice = hp.Choice('optimizer', ['adam', 'sgd', 'rmsprop', 'adagrad', 'nadam'])
 
-    return train_model(x_train, y_train, x_test, y_test, lstm_units=lstm_units, dropout_rate=dropout_rate, batch_size=batch_size)
+    return train_model(x_train, y_train, x_test, y_test, lstm_units1=lstm_units1, lstm_units2=lstm_units2, dropout_rate1=dropout_rate1, dropout_rate2=dropout_rate2, batch_size=batch_size, optimizer_name=optimizer_choice)
 
 
 if __name__ == '__main__':
@@ -29,7 +32,7 @@ if __name__ == '__main__':
         file_path='/home/p1g3/Documents/LSTM Predictor/HistoricalData_1692981828643_GME_NASDAQ.csv',
         feature_cols=['Close/Last', 'Volume'],
         sequence_length=90,
-        epochs=50,
+        epochs=100,
         perform_optimization=True,
         use_early_stopping=True,
         train_size_ratio=0.8,
@@ -44,15 +47,15 @@ if __name__ == '__main__':
     train_dates = raw_df['Date'][params.sequence_length: params.sequence_length + len(y_train)]
     test_dates = raw_df['Date'][train_size + params.sequence_length: train_size + params.sequence_length + len(y_test)]
 
-    # Optimal optimization, then training
+    # If true, run optimization
     if params.perform_optimization:
         tuner = BayesianOptimization(
             build_model,
-            objective='val_loss',  # You can change this if needed
-            max_trials=50,
+            objective='val_loss',
+            max_trials=2,
             executions_per_trial=1,
             directory='tuner_results',
-            project_name='lstm_tuning_oct15'
+            project_name='lstm_tuning_oct15_5'
         )
 
         tuner.search(x_train, y_train, epochs=params.epochs, validation_data=(x_test, y_test))
