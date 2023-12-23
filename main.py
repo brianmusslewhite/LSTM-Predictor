@@ -1,80 +1,137 @@
-from preprocessing import load_and_preprocess_data, normalize_data, prepare_training_data
-from lstm_model import train_model, predict_next_n_days
-from plotting import plot_results
-from keras_tuner.tuners import BayesianOptimization
 import pandas as pd
+import matplotlib.pyplot as plt
+from pmdarima import auto_arima
+from statsmodels.tsa.arima.model import ARIMA
+
+from statsmodels.tsa.holtwinters import SimpleExpSmoothing
+from statsmodels.tsa.holtwinters import Holt
+from prophet import Prophet
 
 
-class Parameters:
-    def __init__(self, file_path, feature_cols, sequence_length, epochs, perform_optimization, use_early_stopping, train_size_ratio):
-        self.file_path = file_path
-        self.feature_cols = feature_cols
-        self.sequence_length = sequence_length
-        self.epochs = epochs
-        self.perform_optimization = perform_optimization
-        self.use_early_stopping = use_early_stopping
-        self.train_size_ratio = train_size_ratio
+class StockData:
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.raw_data = None
+        self.processed_data = None
+
+    def load_data(self):
+        self.raw_data = pd.read_csv(self.filepath)
+
+    def preprocess_data(self):
+        df = self.raw_data.copy()
+        df['Date'] = pd.to_datetime(df['Date'])
+        df.set_index('Date', inplace=True)
+
+        # Replace $ and convert to float
+        financial_cols = ['Close/Last', 'Volume', 'Open', 'High', 'Low']
+        for col in financial_cols:
+            df[col] = df[col].replace('[\$,]', '', regex=True).astype(float)
+
+        # Handling missing values
+        df.fillna(method='ffill', inplace=True)  # Forward fill
+        df.fillna(method='bfill', inplace=True)  # Backward fill if any NaNs remain
+
+        # Feature Engineering
+        df['Close/Last_pct_change'] = df['Close/Last'].pct_change()  # Percentage change
+        df['Volume_pct_change'] = df['Volume'].pct_change()
+
+        # Rolling Window Features (e.g., 7-day rolling mean)
+        df['Close/Last_rolling_mean'] = df['Close/Last'].rolling(window=7).mean()
+
+        # Dropping NaNs created by pct_change and rolling features
+        df.dropna(inplace=True)
+
+        self.processed_data = df
+
+    def get_raw_data(self):
+        return self.raw_data
+
+    def get_processed_data(self):
+        return self.processed_data
 
 
-def build_model(hp):
-    lstm_units1 = hp.Int('lstm_units1', 50, 1000, step=50)
-    lstm_units2 = hp.Int('lstm_units2', 50, 1000, step=50)
-    dropout_rate1 = hp.Float('dropout_rate1', 0.01, 0.5, step=0.01)
-    dropout_rate2 = hp.Float('dropout_rate2', 0.01, 0.5, step=0.01)
-    batch_size = hp.Int('batch_size', 8, 64, step=8)
-    optimizer_choice = hp.Choice('optimizer', ['adam', 'sgd', 'rmsprop', 'adagrad', 'nadam'])
+def plot_forecasts(historical_dates, historical_data, test_dates, test_forecasts, future_dates, future_forecasts):
+    plt.figure(figsize=(15, 10))
 
-    return train_model(x_train, y_train, x_test, y_test, lstm_units1=lstm_units1, lstm_units2=lstm_units2, dropout_rate1=dropout_rate1, dropout_rate2=dropout_rate2, batch_size=batch_size, optimizer_name=optimizer_choice)
+    # Define colors for each model
+    model_colors = {
+        'ARIMA': 'red',
+        'SES': 'blue',
+        'Holt': 'green',
+        'Prophet': 'purple'
+    }
+
+    # Plot Historical Data
+    plt.plot(historical_dates, historical_data, label='Historical Data', color='grey', alpha=0.5)
+
+    # Plot Test Predictions for each model
+    for model_name, test_forecast in test_forecasts.items():
+        color = model_colors.get(model_name, 'black')  # Default to black if model name not found
+        plt.plot(test_dates, test_forecast, label=f'{model_name} Test Prediction', color=color, linestyle='--')
+
+    # Plot Future Forecasts for each model
+    for model_name, future_forecast in future_forecasts.items():
+        color = model_colors.get(model_name, 'black')  # Default to black if model name not found
+        plt.plot(future_dates, future_forecast, label=f'{model_name} Future Forecast', color=color)
+
+    plt.xlabel('Date')
+    plt.ylabel('Stock Price')
+    plt.title('Stock Price Forecasts')
+    plt.legend()
+    plt.show()
 
 
-if __name__ == '__main__':
-    params = Parameters(
-        file_path='/home/p1g3/Documents/LSTM Predictor/HistoricalData_1692981828643_GME_NASDAQ.csv',
-        feature_cols=['Close/Last', 'Volume'],
-        sequence_length=30,
-        epochs=100,
-        perform_optimization=True,
-        use_early_stopping=True,
-        train_size_ratio=0.8,
-    )
+def main():
+    stock_data = StockData('HistoricalData_1692981828643_GME_NASDAQ.csv')
+    stock_data.load_data()
+    stock_data.preprocess_data()
+    data = stock_data.get_processed_data()
 
-    # Load, preprocess, and prep data
-    raw_df = load_and_preprocess_data(params.file_path, params.feature_cols)
-    normalized_data, scaler, train_size = normalize_data(raw_df, params.feature_cols, params.train_size_ratio)
-    x_train, y_train, x_test, y_test = prepare_training_data(normalized_data, params.sequence_length, train_size)
+    close_prices = data['Close/Last']
+    close_prices_dates = data.index  # Already a DatetimeIndex
 
-    # Extract corresponding dates for training and test sets for plotting
-    train_dates = raw_df['Date'][params.sequence_length: params.sequence_length + len(y_train)]
-    test_dates = raw_df['Date'][train_size + params.sequence_length: train_size + params.sequence_length + len(y_test)]
+    # Split the data into training and test sets
+    split_ratio = 0.8
+    split_index = int(len(close_prices) * split_ratio)
+    train, test = close_prices[:split_index], close_prices[split_index:]
+    train_dates, test_dates = close_prices_dates[:split_index], close_prices_dates[split_index:]
 
-    # If true, run optimization
-    if params.perform_optimization:
-        tuner = BayesianOptimization(
-            build_model,
-            objective='val_loss',
-            max_trials=200,
-            executions_per_trial=1,
-            directory='tuner_results',
-            project_name='lstm_tuning_oct15_7'
-        )
+    # Generate future dates for forecasting
+    future_dates = pd.date_range(start=close_prices_dates[-1], periods=31, freq='B')[1:]
 
-        tuner.search(x_train, y_train, epochs=params.epochs, validation_data=(x_test, y_test))
+    # Fit models on training data and forecast
+    test_forecasts = {}
+    future_forecasts = {}
 
-        best_model = tuner.get_best_models(num_models=1)[0]
-        trained_model = best_model
-    else:
-        # Train model with defaults
-        trained_model = train_model(x_train, y_train, x_test, y_test)
+    # ARIMA Model
+    arima_order = auto_arima(train, seasonal=False, stepwise=True).order
+    arima_model = ARIMA(train, order=arima_order).fit()
+    test_forecasts['ARIMA'] = arima_model.predict(start=split_index, end=len(close_prices) - 1)
+    future_forecasts['ARIMA'] = arima_model.forecast(steps=30)
 
-    # Predict stock prices of the test data
-    y_pred_test = trained_model.predict(x_test)
+    # SES Model
+    ses_model = SimpleExpSmoothing(train).fit(smoothing_level=0.2)
+    test_forecasts['SES'] = ses_model.predict(start=split_index, end=len(close_prices) - 1)
+    future_forecasts['SES'] = ses_model.forecast(30)
 
-    # Predict price for next sequence length and create corresponding dates
-    last_sequence = x_test[-1:]  # Take the last sequence from x_test
-    n_days = params.sequence_length
-    y_pred_future = predict_next_n_days(trained_model, last_sequence, n_days)
+    # Holt's Model
+    holt_model = Holt(train).fit(smoothing_level=0.2, smoothing_trend=0.1)
+    test_forecasts['Holt'] = holt_model.predict(start=split_index, end=len(close_prices) - 1)
+    future_forecasts['Holt'] = holt_model.forecast(30)
 
-    last_known_date = raw_df['Date'].iloc[-1]
-    future_dates = pd.date_range(start=last_known_date + pd.Timedelta(days=1), periods=n_days, freq='D')
+    # Prophet Model
+    prophet_data = data.reset_index()  # The 'Date' column is now in 'ds' format suitable for Prophet
+    prophet_data.rename(columns={'Date': 'ds', 'Close/Last': 'y'}, inplace=True)
+    prophet_model = Prophet(yearly_seasonality=True, daily_seasonality=True)
+    prophet_model.fit(prophet_data)
+    future = prophet_model.make_future_dataframe(periods=30, freq='B')
+    prophet_forecast = prophet_model.predict(future)
+    test_forecasts['Prophet'] = prophet_forecast['yhat'][split_index:len(close_prices)]
+    future_forecasts['Prophet'] = prophet_forecast['yhat'][-30:]
 
-    plot_results(train_dates, y_train, test_dates, y_test, y_pred_test, future_dates, y_pred_future, scaler, params)
+    # Call the plotting function
+    plot_forecasts(close_prices_dates, close_prices, test_dates, test_forecasts, future_dates, future_forecasts)
+
+
+if __name__ == "__main__":
+    main()
