@@ -1,6 +1,3 @@
 HistoricalData*.csv
-/pictures
-/optimization_results
 /__pycache__
 .flake8
-/tuner_results
