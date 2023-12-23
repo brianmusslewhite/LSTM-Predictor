@@ -55,7 +55,81 @@ class StockData:
             print("Close prices dates not set. Please run preprocess_data first.")
 
 
-def plot_forecasts(historical_dates, historical_data, test_dates, test_forecasts, future_dates, future_forecasts):
+class ARIMAModel:
+    def __init__(self, train_data, split_index, close_prices):
+        self.train_data = train_data
+        self.split_index = split_index
+        self.model = None
+        self.close_prices = close_prices
+
+    def fit(self):
+        arima_order = auto_arima(self.train_data, seasonal=False, stepwise=True).order
+        self.model = ARIMA(self.train_data, order=arima_order).fit()
+
+    def predict_test(self):
+        return self.model.predict(start=self.split_index, end=len(self.close_prices) - 1)
+
+    def predict_future(self, steps=30):
+        return self.model.forecast(steps=steps)
+
+
+class SESModel:
+    def __init__(self, train_data, split_index, close_prices):
+        self.train_data = train_data
+        self.split_index = split_index
+        self.model = None
+        self.close_prices = close_prices
+
+    def fit(self, smoothing_level=0.2):
+        self.model = SimpleExpSmoothing(self.train_data).fit(smoothing_level=smoothing_level)
+
+    def predict_test(self):
+        return self.model.predict(start=self.split_index, end=len(self.close_prices) - 1)
+
+    def predict_future(self, steps=30):
+        return self.model.forecast(steps=steps)
+
+
+class HoltModel:
+    def __init__(self, train_data, split_index, close_prices):
+        self.train_data = train_data
+        self.split_index = split_index
+        self.model = None
+        self.close_prices = close_prices
+
+    def fit(self, smoothing_level=0.2, smoothing_trend=0.1):
+        self.model = Holt(self.train_data).fit(smoothing_level=smoothing_level, smoothing_trend=smoothing_trend)
+
+    def predict_test(self):
+        return self.model.predict(start=self.split_index, end=len(self.close_prices) - 1)
+
+    def predict_future(self, steps=30):
+        return self.model.forecast(steps=steps)
+
+
+class ProphetModel:
+    def __init__(self, train_data, split_index, close_prices, prophet_data, yearly_seasonality=True, daily_seasonality=True):
+        self.train_data = train_data
+        self.split_index = split_index
+        self.close_prices = close_prices
+        self.yearly_seasonality = yearly_seasonality
+        self.daily_seasonality = daily_seasonality
+        self.model = None
+        self.prophet_data = prophet_data
+
+    def fit(self):
+        self.prophet_data['Date'] = self.prophet_data['Date'].dt.to_timestamp()  # Convert PeriodIndex to Timestamp
+        self.prophet_data.rename(columns={'Date': 'ds', 'Close/Last': 'y'}, inplace=True)
+        self.model = Prophet(yearly_seasonality=self.yearly_seasonality, daily_seasonality=self.daily_seasonality)
+        self.model.fit(self.prophet_data)
+
+    def get_forecast(self):
+        future = self.model.make_future_dataframe(periods=30, freq='B')
+        prophet_forecast = self.model.predict(future)
+        return prophet_forecast
+
+
+def plot_data(historical_dates, historical_data, test_dates, test_forecasts, future_dates, future_forecasts):
     plt.figure(figsize=(15, 10))
 
     # Define colors for each model
@@ -97,35 +171,36 @@ def main():
     test_forecasts = {}
     future_forecasts = {}
 
-    # ARIMA Model
-    arima_order = auto_arima(stock_data.train, seasonal=False, stepwise=True).order
-    arima_model = ARIMA(stock_data.train, order=arima_order).fit()
-    test_forecasts['ARIMA'] = arima_model.predict(start=stock_data.split_index, end=len(stock_data.close_prices) - 1)
-    future_forecasts['ARIMA'] = arima_model.forecast(steps=30)
+    # ARIMA Model (as before)
+    arima_model = ARIMAModel(stock_data.train, stock_data.split_index, stock_data.close_prices)
+    arima_model.fit()
+    test_forecasts['ARIMA'] = arima_model.predict_test()
+    future_forecasts['ARIMA'] = arima_model.predict_future(steps=30)
 
     # SES Model
-    ses_model = SimpleExpSmoothing(stock_data.train).fit(smoothing_level=0.2)
-    test_forecasts['SES'] = ses_model.predict(start=stock_data.split_index, end=len(stock_data.close_prices) - 1)
-    future_forecasts['SES'] = ses_model.forecast(30)
+    ses_model = SESModel(stock_data.train, stock_data.split_index, stock_data.close_prices)
+    ses_model.fit(smoothing_level=0.2)
+    test_forecasts['SES'] = ses_model.predict_test()
+    future_forecasts['SES'] = ses_model.predict_future(steps=30)
 
     # Holt's Model
-    holt_model = Holt(stock_data.train).fit(smoothing_level=0.2, smoothing_trend=0.1)
-    test_forecasts['Holt'] = holt_model.predict(start=stock_data.split_index, end=len(stock_data.close_prices) - 1)
-    future_forecasts['Holt'] = holt_model.forecast(30)
+    holt_model = HoltModel(stock_data.train, stock_data.split_index, stock_data.close_prices)
+    holt_model.fit(smoothing_level=0.2, smoothing_trend=0.1)
+    test_forecasts['Holt'] = holt_model.predict_test()
+    future_forecasts['Holt'] = holt_model.predict_future(steps=30)
 
     # Prophet Model
     prophet_data = stock_data.processed_data.reset_index()
-    prophet_data['Date'] = prophet_data['Date'].dt.to_timestamp()  # Convert PeriodIndex to Timestamp
-    prophet_data.rename(columns={'Date': 'ds', 'Close/Last': 'y'}, inplace=True)
-    prophet_model = Prophet(yearly_seasonality=True, daily_seasonality=True)
-    prophet_model.fit(prophet_data)
-    future = prophet_model.make_future_dataframe(periods=30, freq='B')
-    prophet_forecast = prophet_model.predict(future)
+    prophet_model = ProphetModel(stock_data.train, stock_data.split_index, stock_data.close_prices, prophet_data)
+    prophet_model.fit()
+    prophet_forecast = prophet_model.get_forecast()
+
     test_forecasts['Prophet'] = prophet_forecast['yhat'][stock_data.split_index:len(stock_data.close_prices)]
     future_forecasts['Prophet'] = prophet_forecast['yhat'][-30:]
 
     # Call the plotting function
-    plot_forecasts(stock_data.close_prices_dates, stock_data.close_prices, stock_data.test_dates, test_forecasts, stock_data.future_dates, future_forecasts)
+    plot_data(stock_data.close_prices_dates, stock_data.close_prices, stock_data.test_dates, test_forecasts,
+              stock_data.future_dates, future_forecasts)
 
 
 if __name__ == "__main__":
