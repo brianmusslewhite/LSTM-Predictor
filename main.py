@@ -179,8 +179,8 @@ class ProphetModel:
         self.model = Prophet(yearly_seasonality=self.yearly_seasonality, daily_seasonality=self.daily_seasonality)
         self.model.fit(self.prophet_data)
 
-    def get_forecast(self):
-        future = self.model.make_future_dataframe(periods=30, freq='B')
+    def get_forecast(self, steps=30):
+        future = self.model.make_future_dataframe(steps, freq='B')
         prophet_forecast = self.model.predict(future)
         return prophet_forecast
 
@@ -254,6 +254,8 @@ def plot_feature_importances(feature_importances, feature_names):
 
 
 def main():
+    forecast_length = 365
+
     stock_data = StockData('HistoricalData_1692981828643_GME_NASDAQ.csv')
     stock_data.load_data()
     stock_data.preprocess_data()
@@ -261,7 +263,7 @@ def main():
     stock_data.add_lag_features(lags=5)    # Add lag features
     stock_data.add_rolling_window_features(window_sizes=[7, 30])  # Add rolling window features
     stock_data.split_data()
-    stock_data.generate_future_dates()
+    stock_data.generate_future_dates(periods=forecast_length + 1)
 
     if False:
         # Prepare features and target for RandomForest
@@ -283,30 +285,31 @@ def main():
 
     # ARIMA Model (as before)
     arima_model = ARIMAModel(stock_data)
-    arima_model.optimize_arima()
+    # arima_model.optimize_arima()
+    arima_model.fit()
     test_forecasts['ARIMA'] = arima_model.predict_test()
-    future_forecasts['ARIMA'] = arima_model.predict_future(steps=30)
+    future_forecasts['ARIMA'] = arima_model.predict_future(steps=forecast_length)
 
     # SES Model
     ses_model = SESModel(stock_data)
     ses_model.fit(smoothing_level=0.2)
     test_forecasts['SES'] = ses_model.predict_test()
-    future_forecasts['SES'] = ses_model.predict_future(steps=30)
+    future_forecasts['SES'] = ses_model.predict_future(steps=forecast_length)
 
     # Holt's Model
     holt_model = HoltModel(stock_data)
     holt_model.fit(smoothing_level=0.2, smoothing_trend=0.1)
     test_forecasts['Holt'] = holt_model.predict_test()
-    future_forecasts['Holt'] = holt_model.predict_future(steps=30)
+    future_forecasts['Holt'] = holt_model.predict_future(steps=forecast_length)
 
     # Prophet Model
     prophet_data = stock_data.processed_data.reset_index()
     prophet_model = ProphetModel(stock_data.train, stock_data.split_index, stock_data.close_prices, prophet_data)
     prophet_model.fit()
-    prophet_forecast = prophet_model.get_forecast()
+    prophet_forecast = prophet_model.get_forecast(steps=forecast_length)
 
     test_forecasts['Prophet'] = prophet_forecast['yhat'][stock_data.split_index:len(stock_data.close_prices)]
-    future_forecasts['Prophet'] = prophet_forecast['yhat'][-30:]
+    future_forecasts['Prophet'] = prophet_forecast['yhat'][-forecast_length:]
 
     # Call the plotting function
     plot_data(stock_data.close_prices_dates, stock_data.close_prices, stock_data.test_dates, test_forecasts,
