@@ -1,11 +1,18 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-from pmdarima import auto_arima
-from statsmodels.tsa.arima.model import ARIMA
+import warnings
+from functools import partial
 
-from statsmodels.tsa.holtwinters import SimpleExpSmoothing
-from statsmodels.tsa.holtwinters import Holt
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from bayes_opt import BayesianOptimization
 from prophet import Prophet
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import MinMaxScaler
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.holtwinters import Holt, SimpleExpSmoothing
+from pmdarima import auto_arima
 
 
 class StockData:
@@ -54,10 +61,30 @@ class StockData:
         else:
             print("Close prices dates not set. Please run preprocess_data first.")
 
+    def add_time_features(self):
+        self.processed_data['DayOfWeek'] = self.processed_data.index.dayofweek
+        self.processed_data['Month'] = self.processed_data.index.month
+        self.processed_data['Quarter'] = self.processed_data.index.quarter
+        self.processed_data['Year'] = self.processed_data.index.year
+
+    def add_lag_features(self, lags=5):
+        for lag in range(1, lags + 1):
+            self.processed_data[f'lag_{lag}'] = self.close_prices.shift(lag)
+
+    def add_rolling_window_features(self, window_sizes=[7, 30]):
+        for window in window_sizes:
+            self.processed_data[f'rolling_mean_{window}'] = self.close_prices.rolling(window=window).mean()
+            self.processed_data[f'rolling_std_{window}'] = self.close_prices.rolling(window=window).std()
+
+    def scale_features(self):
+        scaler = MinMaxScaler()
+        self.processed_data = pd.DataFrame(scaler.fit_transform(self.processed_data), columns=self.processed_data.columns, index=self.processed_data.index)
+
 
 class ARIMAModel:
-    def __init__(self, train_data, split_index, close_prices):
+    def __init__(self, train_data, test_data, split_index, close_prices):
         self.train_data = train_data
+        self.test_data = test_data
         self.split_index = split_index
         self.model = None
         self.close_prices = close_prices
@@ -71,6 +98,35 @@ class ARIMAModel:
 
     def predict_future(self, steps=30):
         return self.model.forecast(steps=steps)
+
+    def objective(self, p, d, q):
+        order = (int(p), int(d), int(q))
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=ConvergenceWarning)
+                model = ARIMA(self.train_data, order=order)
+                # Updated fit method call
+                fitted_model = model.fit()
+            predictions = fitted_model.predict(start=self.split_index, end=len(self.close_prices) - 1)
+            mse = np.mean((self.test_data - predictions)**2)
+        except Exception as e:
+            print(f"Error with order {order}: {e}")
+            return 1e6
+        return -mse
+
+    def optimize_arima(self):
+        pbounds = {'p': (0, 5), 'd': (0, 2), 'q': (0, 5)}
+
+        optimizer = BayesianOptimization(
+            f=partial(self.objective),  # Use functools.partial to bind 'self' to the objective function
+            pbounds=pbounds,
+            random_state=1,
+        )
+
+        optimizer.maximize(init_points=3, n_iter=5)
+
+        best_params = optimizer.max['params']
+        self.model = ARIMA(self.train_data, order=(int(best_params['p']), int(best_params['d']), int(best_params['q']))).fit()
 
 
 class SESModel:
@@ -129,6 +185,29 @@ class ProphetModel:
         return prophet_forecast
 
 
+class RandomForestModel:
+    def __init__(self, train_features, train_target):
+        self.train_features = train_features
+        self.train_target = train_target
+        self.model = RandomForestRegressor()
+
+    def fit(self):
+        # Impute missing values
+        imputer = SimpleImputer(strategy='mean')
+        self.train_features_imputed = imputer.fit_transform(self.train_features)
+
+        self.model.fit(self.train_features_imputed, self.train_target)
+
+    def predict(self, features):
+        # Apply the same imputation to the test features
+        imputer = SimpleImputer(strategy='mean')
+        features_imputed = imputer.fit_transform(features)
+        return self.model.predict(features_imputed)
+
+    def get_feature_importance(self):
+        return self.model.feature_importances_
+
+
 def plot_data(historical_dates, historical_data, test_dates, test_forecasts, future_dates, future_forecasts):
     plt.figure(figsize=(15, 10))
 
@@ -160,20 +239,58 @@ def plot_data(historical_dates, historical_data, test_dates, test_forecasts, fut
     plt.show()
 
 
+def plot_feature_importances(feature_importances, feature_names):
+    # Sort the feature importances in descending order
+    indices = np.argsort(feature_importances)[::-1]
+
+    # Plot the feature importances
+    plt.figure(figsize=(10, 6))
+    plt.title("Feature Importances")
+    plt.bar(range(len(feature_importances)), feature_importances[indices],
+            color="r", align="center")
+    plt.xticks(range(len(feature_importances)), [feature_names[i] for i in indices], rotation=90)
+    plt.xlim([-1, len(feature_importances)])
+    plt.show()
+
+
 def main():
     stock_data = StockData('HistoricalData_1692981828643_GME_NASDAQ.csv')
     stock_data.load_data()
     stock_data.preprocess_data()
+    stock_data.add_time_features()         # Add time-related features
+    stock_data.add_lag_features(lags=5)    # Add lag features
+    stock_data.add_rolling_window_features(window_sizes=[7, 30])  # Add rolling window features
     stock_data.split_data()
     stock_data.generate_future_dates()
+
+    # Prepare features and target for RandomForest
+    features = stock_data.processed_data.drop('Close/Last', axis=1)
+    target = stock_data.close_prices
+
+    # Split features into train and test
+    train_features = features[:stock_data.split_index]
+    # test_features = features[stock_data.split_index:]
+    train_target = target[:stock_data.split_index]
+    # test_target = target[stock_data.split_index:]
+
+    # Initialize and fit RandomForest model
+    rf_model = RandomForestModel(train_features, train_target)
+    rf_model.fit()
+
+    feature_importances = rf_model.get_feature_importance()
+    plot_feature_importances(feature_importances, train_features.columns)
+
+    # Predictions
+    # test_forecasts['RandomForest'] = rf_model.predict(test_features)
 
     # Fit models on training data and forecast
     test_forecasts = {}
     future_forecasts = {}
 
     # ARIMA Model (as before)
-    arima_model = ARIMAModel(stock_data.train, stock_data.split_index, stock_data.close_prices)
-    arima_model.fit()
+    arima_model = ARIMAModel(stock_data.train, stock_data.test, stock_data.split_index, stock_data.close_prices)
+    #  arima_model.fit()
+    arima_model.optimize_arima()
     test_forecasts['ARIMA'] = arima_model.predict_test()
     future_forecasts['ARIMA'] = arima_model.predict_future(steps=30)
 
