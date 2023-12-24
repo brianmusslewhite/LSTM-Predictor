@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from bayes_opt import BayesianOptimization
+from pmdarima import auto_arima
 from prophet import Prophet
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
@@ -12,7 +13,6 @@ from sklearn.preprocessing import MinMaxScaler
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.holtwinters import Holt, SimpleExpSmoothing
-from pmdarima import auto_arima
 
 
 class StockData:
@@ -82,12 +82,12 @@ class StockData:
 
 
 class ARIMAModel:
-    def __init__(self, train_data, test_data, split_index, close_prices):
-        self.train_data = train_data
-        self.test_data = test_data
-        self.split_index = split_index
+    def __init__(self, stock_data):
+        self.train_data = stock_data.train
+        self.test_data = stock_data.test
+        self.split_index = stock_data.split_index
+        self.close_prices = stock_data.close_prices
         self.model = None
-        self.close_prices = close_prices
 
     def fit(self):
         arima_order = auto_arima(self.train_data, seasonal=False, stepwise=True).order
@@ -123,18 +123,18 @@ class ARIMAModel:
             random_state=1,
         )
 
-        optimizer.maximize(init_points=3, n_iter=5)
+        optimizer.maximize(init_points=50, n_iter=500)
 
         best_params = optimizer.max['params']
         self.model = ARIMA(self.train_data, order=(int(best_params['p']), int(best_params['d']), int(best_params['q']))).fit()
 
 
 class SESModel:
-    def __init__(self, train_data, split_index, close_prices):
-        self.train_data = train_data
-        self.split_index = split_index
+    def __init__(self, stock_data):
+        self.train_data = stock_data.train
+        self.split_index = stock_data.split_index
+        self.close_prices = stock_data.close_prices
         self.model = None
-        self.close_prices = close_prices
 
     def fit(self, smoothing_level=0.2):
         self.model = SimpleExpSmoothing(self.train_data).fit(smoothing_level=smoothing_level)
@@ -147,11 +147,11 @@ class SESModel:
 
 
 class HoltModel:
-    def __init__(self, train_data, split_index, close_prices):
-        self.train_data = train_data
-        self.split_index = split_index
+    def __init__(self, stock_data):
+        self.train_data = stock_data.train
+        self.split_index = stock_data.split_index
+        self.close_prices = stock_data.close_prices
         self.model = None
-        self.close_prices = close_prices
 
     def fit(self, smoothing_level=0.2, smoothing_trend=0.1):
         self.model = Holt(self.train_data).fit(smoothing_level=smoothing_level, smoothing_trend=smoothing_trend)
@@ -263,45 +263,38 @@ def main():
     stock_data.split_data()
     stock_data.generate_future_dates()
 
-    # Prepare features and target for RandomForest
-    features = stock_data.processed_data.drop('Close/Last', axis=1)
-    target = stock_data.close_prices
+    if False:
+        # Prepare features and target for RandomForest
+        features = stock_data.processed_data.drop('Close/Last', axis=1)
+        target = stock_data.close_prices
+        train_features = features[:stock_data.split_index]
+        train_target = target[:stock_data.split_index]
 
-    # Split features into train and test
-    train_features = features[:stock_data.split_index]
-    # test_features = features[stock_data.split_index:]
-    train_target = target[:stock_data.split_index]
-    # test_target = target[stock_data.split_index:]
+        # Initialize and fit RandomForest model
+        rf_model = RandomForestModel(train_features, train_target)
+        rf_model.fit()
 
-    # Initialize and fit RandomForest model
-    rf_model = RandomForestModel(train_features, train_target)
-    rf_model.fit()
-
-    feature_importances = rf_model.get_feature_importance()
-    plot_feature_importances(feature_importances, train_features.columns)
-
-    # Predictions
-    # test_forecasts['RandomForest'] = rf_model.predict(test_features)
+        feature_importances = rf_model.get_feature_importance()
+        plot_feature_importances(feature_importances, train_features.columns)
 
     # Fit models on training data and forecast
     test_forecasts = {}
     future_forecasts = {}
 
     # ARIMA Model (as before)
-    arima_model = ARIMAModel(stock_data.train, stock_data.test, stock_data.split_index, stock_data.close_prices)
-    #  arima_model.fit()
+    arima_model = ARIMAModel(stock_data)
     arima_model.optimize_arima()
     test_forecasts['ARIMA'] = arima_model.predict_test()
     future_forecasts['ARIMA'] = arima_model.predict_future(steps=30)
 
     # SES Model
-    ses_model = SESModel(stock_data.train, stock_data.split_index, stock_data.close_prices)
+    ses_model = SESModel(stock_data)
     ses_model.fit(smoothing_level=0.2)
     test_forecasts['SES'] = ses_model.predict_test()
     future_forecasts['SES'] = ses_model.predict_future(steps=30)
 
     # Holt's Model
-    holt_model = HoltModel(stock_data.train, stock_data.split_index, stock_data.close_prices)
+    holt_model = HoltModel(stock_data)
     holt_model.fit(smoothing_level=0.2, smoothing_trend=0.1)
     test_forecasts['Holt'] = holt_model.predict_test()
     future_forecasts['Holt'] = holt_model.predict_future(steps=30)
